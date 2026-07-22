@@ -446,8 +446,33 @@
                 <span class="slider"></span>
               </label>
             </div>
+            <p id="proxyWarning" class="mono text-[10px] text-[var(--warning)] leading-relaxed hidden">
+              <i class="fas fa-triangle-exclamation mr-1"></i>Tanpa proxy, request langsung ke auth.roblox.com akan ditolak browser (CORS). Roblox tidak mengirim header yang mengizinkan origin dari web biasa, jadi mode direct kemungkinan besar akan ERROR semua — ini keterbatasan browser, bukan bug.
+            </p>
 
-            <div class="flex items-center justify-between">
+            <div class="pt-2 border-t border-[var(--border-soft)]">
+              <div class="flex items-center justify-between mb-2">
+                <label class="mono text-xs flex items-center gap-2 text-[var(--muted)]">
+                  <i class="fas fa-server text-[var(--accent)]"></i> Custom proxy
+                </label>
+                <span id="customProxyCount" class="mono text-xs text-[var(--accent-2)]">bawaan (4)</span>
+              </div>
+              <label for="customProxyUpload" id="customProxyDrop" class="block border border-dashed border-[var(--border)] rounded-lg py-2.5 text-center cursor-pointer hover:border-[var(--accent)] transition-all mb-2">
+                <i class="fas fa-upload text-xs text-[var(--accent)] mr-1"></i>
+                <span class="mono text-xs">Upload proxy.txt</span>
+              </label>
+              <input type="file" id="customProxyUpload" accept=".txt" class="hidden" />
+              <textarea id="customProxyText" class="textarea" style="min-height:64px; font-size:11px;" placeholder="codetabs;https://api.codetabs.com/v1/proxy/?quest={url}&#10;x2u;https://cors.x2u.in/{url_raw}"></textarea>
+              <div class="flex gap-2 mt-2">
+                <button id="applyCustomProxyBtn" class="btn btn-ghost flex-1" style="padding:6px 8px;font-size:11.5px;"><i class="fas fa-check mr-1"></i> Terapkan</button>
+                <button id="clearCustomProxyBtn" class="btn btn-ghost flex-1" style="padding:6px 8px;font-size:11.5px;"><i class="fas fa-rotate-left mr-1"></i> Pakai bawaan</button>
+              </div>
+              <p class="mono text-[10px] text-[var(--muted-2)] mt-2 leading-relaxed">
+                1 baris = 1 proxy: <span class="text-[var(--accent-2)]">nama;url_proxy;field_unwrap</span> (field_unwrap opsional). Pakai <span class="text-[var(--accent-2)]">{url}</span> untuk proxy gaya query (auto ke-encode), atau <span class="text-[var(--accent-2)]">{url_raw}</span> untuk proxy gaya tempel-langsung (tidak di-encode).
+              </p>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-[var(--border-soft)]">
               <label class="mono text-xs flex items-center gap-2 text-[var(--muted)]">
                 <i class="fas fa-volume-high text-[var(--accent)]"></i> Sound FX
               </label>
@@ -581,6 +606,7 @@
     stats: { processed: 0, total: 0, valid: 0, taken: 0, invalid: 0, errors: 0 },
     running: false,
     config: { threads: 6, delay: 400, retry: 4, shuffle: false, useProxy: true, sound: false },
+    customProxies: [],
     rpsHistory: new Array(40).fill(0),
     rpsPeak: 0,
     lastSecondReqs: 0,
@@ -644,7 +670,10 @@
     $('retryVal').textContent = e.target.value;
   });
   $('shuffleToggle').addEventListener('change', e => state.config.shuffle = e.target.checked);
-  $('proxyToggle').addEventListener('change', e => state.config.useProxy = e.target.checked);
+  $('proxyToggle').addEventListener('change', e => {
+    state.config.useProxy = e.target.checked;
+    $('proxyWarning').classList.toggle('hidden', e.target.checked);
+  });
   $('soundToggle').addEventListener('change', e => state.config.sound = e.target.checked);
 
   $('bulkUsernames').addEventListener('input', e => {
@@ -691,6 +720,71 @@
       $('fileUpload').files = e.dataTransfer.files;
       $('fileUpload').dispatchEvent(new Event('change'));
     }
+  });
+
+  // === Custom Proxy ===
+  // Format per baris: nama;url_dengan_{url};field_unwrap_opsional
+  // Contoh: codetabs;https://api.codetabs.com/v1/proxy/?quest={url}
+  //         allorigins-get;https://api.allorigins.win/get?url={url};contents
+  function parseProxyLines(text) {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+    const proxies = [];
+    const errors = [];
+    lines.forEach((line, idx) => {
+      const parts = line.split(';').map(p => p.trim());
+      const [name, urlTemplate, unwrap] = parts;
+      const hasEncoded = urlTemplate && urlTemplate.includes('{url}');
+      const hasRaw = urlTemplate && urlTemplate.includes('{url_raw}');
+      if (!name || !urlTemplate || (!hasEncoded && !hasRaw)) {
+        errors.push(`Baris ${idx + 1} tidak valid (butuh {url} atau {url_raw} di template)`);
+        return;
+      }
+      proxies.push({
+        name,
+        build: u => hasRaw ? urlTemplate.replace('{url_raw}', u) : urlTemplate.replace('{url}', encodeURIComponent(u)),
+        unwrap: unwrap || null
+      });
+    });
+    return { proxies, errors };
+  }
+
+  function getActiveProxies() {
+    return state.customProxies.length > 0 ? state.customProxies : PROXIES;
+  }
+
+  $('customProxyUpload').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      $('customProxyText').value = ev.target.result;
+      toast(`File ${file.name} dimuat, klik Terapkan`, 'info');
+    };
+    reader.readAsText(file);
+  });
+
+  $('applyCustomProxyBtn').addEventListener('click', () => {
+    const text = $('customProxyText').value;
+    if (!text.trim()) { toast('Textarea proxy masih kosong', 'warning'); return; }
+    const { proxies, errors } = parseProxyLines(text);
+    if (proxies.length === 0) {
+      toast('Tidak ada baris proxy yang valid', 'error');
+      logTerm('error', 'Custom proxy gagal diterapkan: format tidak valid di semua baris');
+      return;
+    }
+    state.customProxies = proxies;
+    $('customProxyCount').textContent = `custom (${proxies.length})`;
+    logTerm('system', `${proxies.length} custom proxy diterapkan: ${proxies.map(p => p.name).join(', ')}`);
+    if (errors.length) logTerm('error', `${errors.length} baris dilewati - ${errors.join(' | ')}`);
+    toast(`${proxies.length} custom proxy aktif`, 'success');
+  });
+
+  $('clearCustomProxyBtn').addEventListener('click', () => {
+    state.customProxies = [];
+    $('customProxyText').value = '';
+    $('customProxyCount').textContent = 'bawaan (4)';
+    logTerm('system', 'Kembali memakai proxy bawaan');
+    toast('Memakai proxy bawaan', 'info');
   });
 
   document.querySelectorAll('.filter-chip').forEach(chip => {
@@ -913,7 +1007,7 @@
     const params = `?birthday=2006-09-21T07:00:00.000Z&context=Signup&username=${encodeURIComponent(username)}`;
     const targetUrl = baseUrl + params;
 
-    const attempts = state.config.useProxy ? PROXIES : [{ name: 'direct', build: u => u, unwrap: null }];
+    const attempts = state.config.useProxy ? getActiveProxies() : [{ name: 'direct', build: u => u, unwrap: null }];
     const maxAttempts = Math.max(1, state.config.retry + 1);
 
     let lastErr = null;
@@ -1021,10 +1115,25 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   async function testConnection() {
-    logTerm('system', 'Menguji konektivitas semua proxy...');
-    toast('Testing proxy...', 'info');
     const targetUrl = 'https://auth.roblox.com/v1/usernames/validate?birthday=2006-09-21T07:00:00.000Z&context=Signup&username=Roblox';
-    for (const proxy of PROXIES) {
+
+    if (!state.config.useProxy) {
+      logTerm('system', 'Menguji koneksi direct (tanpa proxy)...');
+      toast('Testing direct connection...', 'info');
+      const result = await fetchViaProxy({ name: 'direct', build: u => u, unwrap: null }, targetUrl, 10000);
+      if (result.ok) {
+        logTerm('valid', 'direct: OK');
+      } else {
+        logTerm('error', `direct: GAGAL (${result.status}${result.snippet ? ' — "' + result.snippet + '"' : ''})`);
+        logTerm('system', 'Ini wajar — browser memblokir call langsung ke auth.roblox.com karena CORS. Aktifkan lagi toggle CORS Proxy untuk bisa jalan.');
+      }
+      return;
+    }
+
+    const proxies = getActiveProxies();
+    logTerm('system', `Menguji konektivitas ${proxies.length} proxy ${state.customProxies.length > 0 ? '(custom)' : '(bawaan)'}...`);
+    toast('Testing proxy...', 'info');
+    for (const proxy of proxies) {
       const result = await fetchViaProxy(proxy, targetUrl, 10000);
       if (result.ok) {
         logTerm('valid', `${proxy.name}: OK`);
@@ -1032,7 +1141,7 @@
         logTerm('error', `${proxy.name}: GAGAL (${result.status}${result.snippet ? ' — "' + result.snippet + '"' : ''})`);
       }
     }
-    logTerm('system', 'Test selesai. Kalau semua GAGAL, kemungkinan besar jaringan/browser Anda memblokir proxy ini (coba jaringan lain atau matikan ad-blocker/VPN).');
+    logTerm('system', 'Test selesai. Kalau semua GAGAL, kemungkinan besar jaringan/browser Anda memblokir proxy ini (coba jaringan lain, ganti custom proxy, atau matikan ad-blocker/VPN).');
   }
 
   async function start() {
