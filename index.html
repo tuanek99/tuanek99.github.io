@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BYTESEC · Roblox Username Checker</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  :root {
+    --bg-0: #0a0b0f;
+    --bg-1: #101218;
+    --card: #12141b;
+    --card-2: #15171f;
+    --border: rgba(255, 255, 255, 0.07);
+    --border-soft: rgba(255, 255, 255, 0.04);
+    --fg: #eceef2;
+    --muted: #8b8d99;
+    --muted-2: #5c5e6b;
+    --accent: #6e56f8;
+    --accent-soft: rgba(110, 86, 248, 0.14);
+    --accent-2: #22d3b6;
+    --valid: #34d399;
+    --taken: #f8717a;
+    --invalid: #f0a15c;
+    --warning: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg-0);
+    color: var(--fg);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(110, 86, 248, 0.10), transparent 40%),
+      radial-gradient(circle at 90% 90%, rgba(34, 211, 182, 0.07), transparent 42%),
+      linear-gradient(180deg, #0a0b0f 0%, #0d0e13 100%);
+    z-index: -2;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 56px 56px;
+    z-index: -1;
+    pointer-events: none;
+    mask-image: radial-gradient(ellipse at 50% 0%, black 0%, transparent 65%);
+  }
+  .display-font { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.01em; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .glass {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .card-flat {
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .btn {
+    position: relative;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0;
+    padding: 10px 18px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    border: 1px solid transparent;
+    user-select: none;
+    font-size: 13.5px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset, 0 6px 18px rgba(110, 86, 248, 0.28);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: #7c66ff;
+    transform: translateY(-1px);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.16) inset, 0 8px 22px rgba(110, 86, 248, 0.38);
+  }
+  .btn-ghost {
+    background: rgba(255,255,255,0.03);
+    color: var(--fg);
+    border-color: var(--border);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.14);
+  }
+  .btn-danger {
+    background: rgba(248, 113, 122, 0.12);
+    color: #ff9ba1;
+    border-color: rgba(248, 113, 122, 0.28);
+  }
+  .btn-danger:hover:not(:disabled) { background: rgba(248, 113, 122, 0.2); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+  .input, .textarea {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 13px;
+    color: var(--fg);
+    font-family: 'Inter', sans-serif;
+    font-size: 14.5px;
+    transition: all 0.15s;
+  }
+  .input:focus, .textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .textarea { font-family: 'JetBrains Mono', monospace; resize: vertical; min-height: 110px; font-size: 12.5px; }
+  .toggle { position: relative; display: inline-block; width: 40px; height: 22px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle .slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    transition: 0.2s;
+    border: 1px solid var(--border);
+  }
+  .toggle .slider:before {
+    content: ''; position: absolute;
+    width: 16px; height: 16px; left: 2px; top: 2px;
+    background: #a9abb8;
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+  .toggle input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+  .toggle input:checked + .slider:before { transform: translateX(18px); background: white; }
+  .stat-card {
+    position: relative;
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    overflow: hidden;
+    transition: transform 0.18s, border-color 0.18s;
+  }
+  .stat-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.14); }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 2.5px;
+    background: var(--accent-color, var(--accent));
+    opacity: 0.85;
+  }
+  .terminal {
+    position: relative;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    height: 460px;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .terminal-header {
+    background: rgba(255,255,255,0.02);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .terminal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+  }
+  .terminal-body::-webkit-scrollbar { width: 7px; }
+  .terminal-body::-webkit-scrollbar-track { background: transparent; }
+  .terminal-body::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+  .terminal-body::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
+  .term-line { padding: 2px 0; display: flex; gap: 8px; align-items: baseline; animation: slideIn 0.18s ease-out; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+  .term-time { color: var(--muted-2); font-size: 11px; white-space: nowrap; }
+  .term-tag { font-weight: 700; min-width: 68px; font-size: 11px; }
+  .progress-track {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+    height: 7px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    border-radius: 999px;
+    transition: width 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-fill::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+    animation: shimmer 1.6s linear infinite;
+  }
+  @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    border-radius: 50%;
+    z-index: -1;
+    opacity: 0.35;
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--valid);
+    box-shadow: 0 0 10px currentColor;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.75); }
+  }
+  .status-dot.idle { background: var(--muted-2); animation: none; }
+  .status-dot.running { background: var(--accent); }
+  .status-dot.error { background: var(--taken); }
+  .brand-mark {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    box-shadow: 0 0 24px rgba(110, 86, 248, 0.35);
+  }
+  .toast {
+    position: fixed; top: 22px; right: 22px;
+    z-index: 100;
+    background: #17191f;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 13px 18px;
+    transform: translateX(420px);
+    transition: transform 0.35s cubic-bezier(.2,.9,.3,1.1);
+    display: flex; align-items: center; gap: 12px;
+    min-width: 270px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+  }
+  .toast.show { transform: translateX(0); }
+  .rps-bar { display: flex; gap: 2.5px; height: 26px; align-items: flex-end; }
+  .rps-bar .bar { flex: 1; background: linear-gradient(180deg, var(--accent-2), var(--accent)); border-radius: 2px 2px 0 0; transition: height 0.3s; min-height: 1px; opacity: 0.9; }
+  .chip {
+    padding: 5px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+  }
+  .chip:hover { border-color: rgba(255,255,255,0.2); color: var(--fg); }
+  .chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--fg); }
+  .chip-count { font-weight: 700; color: var(--accent-2); }
+  .mode-tab.active { background: var(--accent-soft) !important; border-color: var(--accent) !important; color: var(--fg) !important; }
+  .stat-num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    line-height: 1;
+    transition: transform 0.2s;
+  }
+  .stat-num.bump { animation: bump 0.3s ease; }
+  @keyframes bump { 0% { transform: scale(1); } 50% { transform: scale(1.14); } 100% { transform: scale(1); } }
+  .section-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  input[type=range] { -webkit-appearance: none; appearance: none; height: 4px; background: rgba(255,255,255,0.1); border-radius: 999px; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; background: var(--fg); border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 3px var(--accent-soft); }
+  input[type=range]::-moz-range-thumb { width: 15px; height: 15px; background: var(--fg); border-radius: 50%; cursor: pointer; border: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+  @media (max-width: 1024px) {
+    .main-grid { grid-template-columns: 1fr !important; }
+  }
+  @keyframes floatP {
+    0%, 100% { transform: translate(0,0); opacity: 0.15; }
+    50% { transform: translate(30px, -40px); opacity: 0.4; }
+  }
+  /* Signature: live pulse / heartbeat line, echoing "checking if a name is alive" */
+  .pulse-line {
+    width: 64px; height: 20px;
+    overflow: visible;
+  }
+  .pulse-line path {
+    fill: none;
+    stroke: var(--accent-2);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 4px rgba(34, 211, 182, 0.6));
+  }
+  .pulse-line.idle path { stroke: var(--muted-2); filter: none; }
+  @keyframes pulseTravel { to { stroke-dashoffset: -240; } }
+  .pulse-line path.animated {
+    stroke-dasharray: 6 4;
+    animation: pulseTravel 1.1s linear infinite;
+  }
+</style>
+</head>
+<body>
+  <div id="particles"></div>
+
+  <header class="relative z-10 px-6 py-4 border-b border-[var(--border)]">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-3">
+        <div class="brand-mark w-10 h-10 rounded-xl flex items-center justify-center">
+          <i class="fas fa-wave-square text-lg text-white"></i>
+        </div>
+        <div>
+          <h1 class="display-font font-bold text-xl leading-none tracking-wide">BYTESEC</h1>
+          <p class="text-xs mono text-[var(--muted)] mt-0.5">by GhostX • V1.0</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 card-flat px-4 py-2.5">
+        <div class="flex items-center gap-2">
+          <div id="statusDot" class="status-dot idle"></div>
+          <span id="statusText" class="mono text-sm">IDLE</span>
+        </div>
+        <div class="w-px h-4 bg-[var(--border)]"></div>
+        <svg id="pulseLine" class="pulse-line idle" viewBox="0 0 64 20" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 10 H18 L22 3 L27 17 L31 10 H64" />
+        </svg>
+        <div class="w-px h-4 bg-[var(--border)]"></div>
+        <span class="mono text-xs text-[var(--muted)]">RPS</span>
+        <span id="rpsCounter" class="mono text-sm text-[var(--accent-2)] font-bold">0</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-6">
+    <div class="main-grid grid grid-cols-[360px_1fr] gap-5">
+
+      <aside class="space-y-4">
+        <section class="glass p-5">
+          <h2 class="section-label mb-4 flex items-center gap-2">
+            <i class="fas fa-sliders text-[var(--accent)]"></i> Input
+          </h2>
+
+          <div class="flex gap-1.5 mb-4 p-1 rounded-lg" style="background: rgba(255,255,255,0.02);">
+            <button class="btn btn-ghost flex-1 mode-tab active !border-0" data-mode="single" style="padding:8px 10px;">
+              <i class="fas fa-user mr-1"></i> Single
+            </button>
+            <button class="btn btn-ghost flex-1 mode-tab !border-0" data-mode="bulk" style="padding:8px 10px;">
+              <i class="fas fa-list mr-1"></i> Bulk
+            </button>
+            <button class="btn btn-ghost flex-1 mode-tab !border-0" data-mode="file" style="padding:8px 10px;">
+              <i class="fas fa-file-arrow-up mr-1"></i> File
+            </button>
+          </div>
+
+          <div id="singleInput" class="mode-panel">
+            <label class="mono text-xs text-[var(--muted)] block mb-2">USERNAME</label>
+            <input type="text" id="singleUsername" class="input" placeholder="Masukkan username Roblox..." />
+            <button id="checkSingleBtn" class="btn btn-primary w-full mt-3">
+              <i class="fas fa-bolt mr-2"></i> Check Username
+            </button>
+          </div>
+
+          <div id="bulkInput" class="mode-panel hidden">
+            <label class="mono text-xs text-[var(--muted)] block mb-2">USERNAME LIST (satu per baris)</label>
+            <textarea id="bulkUsernames" class="textarea" placeholder="GhostX&#10;RobloxFan&#10;ProGamer123"></textarea>
+            <div class="flex justify-between mt-2 text-xs mono text-[var(--muted)]">
+              <span><i class="fas fa-list mr-1"></i> <span id="bulkCount">0</span> usernames</span>
+            </div>
+          </div>
+
+          <div id="fileInput" class="mode-panel hidden">
+            <label class="mono text-xs text-[var(--muted)] block mb-2">UPLOAD FILE .TXT</label>
+            <label for="fileUpload" id="dropZone" class="block border-2 border-dashed border-[var(--border)] rounded-xl p-6 text-center cursor-pointer hover:border-[var(--accent)] transition-all">
+              <i class="fas fa-cloud-arrow-up text-2xl text-[var(--accent)] mb-2"></i>
+              <p class="mono text-sm">Klik untuk pilih file</p>
+              <p class="mono text-xs text-[var(--muted)] mt-1" id="fileName">atau drag & drop .txt</p>
+            </label>
+            <input type="file" id="fileUpload" accept=".txt" class="hidden" />
+            <div id="fileStats" class="hidden mt-3 p-3 rounded-lg card-flat text-xs mono space-y-1">
+              <div class="flex justify-between"><span class="text-[var(--muted)]">Loaded:</span> <span id="fileLoadedCount" class="text-[var(--accent-2)]">0</span></div>
+              <div class="flex justify-between"><span class="text-[var(--muted)]">Unique:</span> <span id="fileUniqueCount" class="text-[var(--accent-2)]">0</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="glass p-5">
+          <h2 class="section-label mb-4 flex items-center gap-2">
+            <i class="fas fa-gauge-high text-[var(--accent)]"></i> Pengaturan
+          </h2>
+
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <label class="mono text-xs text-[var(--muted)]">CONCURRENT REQUESTS</label>
+                <span id="threadsVal" class="mono text-sm text-[var(--accent-2)] font-bold">6</span>
+              </div>
+              <input type="range" id="threadsSlider" min="1" max="50" value="6" class="w-full" />
+            </div>
+
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <label class="mono text-xs text-[var(--muted)]">DELAY (ms)</label>
+                <span id="delayVal" class="mono text-sm text-[var(--accent-2)] font-bold">400</span>
+              </div>
+              <input type="range" id="delaySlider" min="0" max="2000" step="50" value="400" class="w-full" />
+            </div>
+
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <label class="mono text-xs text-[var(--muted)]">MAX RETRY</label>
+                <span id="retryVal" class="mono text-sm text-[var(--accent-2)] font-bold">4</span>
+              </div>
+              <input type="range" id="retrySlider" min="0" max="10" value="4" class="w-full" />
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-[var(--border-soft)]">
+              <label class="mono text-xs flex items-center gap-2 text-[var(--muted)]">
+                <i class="fas fa-shuffle text-[var(--accent)]"></i> Shuffle list
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="shuffleToggle" />
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <label class="mono text-xs flex items-center gap-2 text-[var(--muted)]">
+                <i class="fas fa-shield-halved text-[var(--accent)]"></i> CORS proxy
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="proxyToggle" checked />
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <label class="mono text-xs flex items-center gap-2 text-[var(--muted)]">
+                <i class="fas fa-volume-high text-[var(--accent)]"></i> Sound FX
+              </label>
+              <label class="toggle">
+                <input type="checkbox" id="soundToggle" />
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="glass p-5">
+          <div class="grid grid-cols-2 gap-2.5">
+            <button id="startBtn" class="btn btn-primary">
+              <i class="fas fa-play mr-2"></i> Start
+            </button>
+            <button id="stopBtn" class="btn btn-danger" disabled>
+              <i class="fas fa-stop mr-2"></i> Stop
+            </button>
+            <button id="clearBtn" class="btn btn-ghost">
+              <i class="fas fa-eraser mr-2"></i> Clear
+            </button>
+            <button id="downloadBtn" class="btn btn-ghost">
+              <i class="fas fa-download mr-2"></i> Download
+            </button>
+          </div>
+          <button id="testBtn" class="btn btn-ghost w-full mt-2.5">
+            <i class="fas fa-plug mr-2"></i> Test koneksi proxy
+          </button>
+        </section>
+      </aside>
+
+      <section class="space-y-4">
+        <div class="glass p-5">
+          <div class="flex justify-between items-center mb-3">
+            <div>
+              <h2 class="section-label">Progress</h2>
+              <p class="mono text-xs text-[var(--muted)] mt-1">
+                <span id="processedCount">0</span> / <span id="totalCount">0</span> diproses
+              </p>
+            </div>
+            <div class="text-right">
+              <div id="progressPercent" class="display-font font-bold text-2xl text-[var(--fg)]">0%</div>
+              <div class="mono text-xs text-[var(--muted)]">ETA: <span id="etaTime">--:--</span></div>
+            </div>
+          </div>
+          <div class="progress-track">
+            <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+          </div>
+          <div class="mt-4">
+            <div class="flex justify-between items-center mb-2">
+              <span class="mono text-xs text-[var(--muted)]">RPS HISTORY</span>
+              <span class="mono text-xs text-[var(--accent-2)]">peak: <span id="peakRps">0</span></span>
+            </div>
+            <div id="rpsBar" class="rps-bar"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="stat-card" style="--accent-color: #34d399;">
+            <div class="flex items-center justify-between mb-1">
+              <span class="mono text-xs text-[var(--muted)]">VALID</span>
+              <i class="fas fa-circle-check text-[var(--valid)] text-sm"></i>
+            </div>
+            <div id="statValid" class="stat-num text-[var(--valid)]">0</div>
+          </div>
+          <div class="stat-card" style="--accent-color: #f8717a;">
+            <div class="flex items-center justify-between mb-1">
+              <span class="mono text-xs text-[var(--muted)]">TAKEN</span>
+              <i class="fas fa-circle-xmark text-[var(--taken)] text-sm"></i>
+            </div>
+            <div id="statTaken" class="stat-num text-[var(--taken)]">0</div>
+          </div>
+          <div class="stat-card" style="--accent-color: #f0a15c;">
+            <div class="flex items-center justify-between mb-1">
+              <span class="mono text-xs text-[var(--muted)]">INVALID</span>
+              <i class="fas fa-ban text-[var(--invalid)] text-sm"></i>
+            </div>
+            <div id="statInvalid" class="stat-num text-[var(--invalid)]">0</div>
+          </div>
+          <div class="stat-card" style="--accent-color: #fbbf24;">
+            <div class="flex items-center justify-between mb-1">
+              <span class="mono text-xs text-[var(--muted)]">ERRORS</span>
+              <i class="fas fa-triangle-exclamation text-[var(--warning)] text-sm"></i>
+            </div>
+            <div id="statErrors" class="stat-num text-[var(--warning)]">0</div>
+          </div>
+        </div>
+
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="flex items-center gap-2">
+              <span class="mono text-xs text-[var(--muted)]"><i class="fas fa-terminal mr-1.5"></i>activity log</span>
+            </div>
+            <div class="flex gap-1.5 flex-wrap">
+              <button class="chip filter-chip active" data-filter="all">ALL <span class="chip-count" id="filterAll">0</span></button>
+              <button class="chip filter-chip" data-filter="valid">VALID <span class="chip-count" id="filterValid">0</span></button>
+              <button class="chip filter-chip" data-filter="taken">TAKEN <span class="chip-count" id="filterTaken">0</span></button>
+              <button class="chip filter-chip" data-filter="invalid">INVALID <span class="chip-count" id="filterInvalid">0</span></button>
+              <button class="chip filter-chip" data-filter="error">ERR <span class="chip-count" id="filterErr">0</span></button>
+            </div>
+          </div>
+          <div id="terminalBody" class="terminal-body"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="border-t border-[var(--border)] mt-6 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2 text-xs mono text-[var(--muted)]">
+      <div>
+        <i class="fas fa-code mr-1"></i> BYTESEC — Roblox Username Checker
+      </div>
+      <div class="flex gap-4">
+        <span><i class="fas fa-database mr-1"></i> API: auth.roblox.com</span>
+        <span><i class="fas fa-shield-halved mr-1"></i> 100% client-side</span>
+      </div>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast">
+    <i id="toastIcon" class="fas fa-circle-info text-[var(--accent-2)]"></i>
+    <span id="toastMsg" class="mono text-sm">Message</span>
+  </div>
+
+<script>
+  const state = {
+    mode: 'single',
+    usernames: [],
+    results: { valid: [], taken: [], invalid: [], errors: [] },
+    stats: { processed: 0, total: 0, valid: 0, taken: 0, invalid: 0, errors: 0 },
+    running: false,
+    config: { threads: 6, delay: 400, retry: 4, shuffle: false, useProxy: true, sound: false },
+    rpsHistory: new Array(40).fill(0),
+    rpsPeak: 0,
+    lastSecondReqs: 0,
+    _lastSec: 0,
+    startTime: 0,
+    filter: 'all'
+  };
+
+  const $ = id => document.getElementById(id);
+  const terminalBody = $('terminalBody');
+
+  // Background Particles
+  (function() {
+    const container = $('particles');
+    for (let i = 0; i < 28; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const size = Math.random() * 4 + 2;
+      p.style.width = size + 'px';
+      p.style.height = size + 'px';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.top = Math.random() * 100 + 'vh';
+      p.style.background = Math.random() > 0.5 ? '#e040fb' : '#22d3ee';
+      p.style.boxShadow = `0 0 ${size * 3}px ${p.style.background}`;
+      const dur = Math.random() * 20 + 15;
+      p.style.animation = `floatP ${dur}s ease-in-out infinite`;
+      p.style.animationDelay = -Math.random() * dur + 's';
+      container.appendChild(p);
+    }
+  })();
+
+  function bootMessage() {
+    logTerm('system', 'GHOSTX Roblox Checker v2.2 initialized');
+    logTerm('system', 'Target API: auth.roblox.com/v1/usernames/validate');
+    logTerm('info', 'Pilih mode (Single / Bulk / File), atur konfigurasi, lalu klik START');
+    logTerm('info', 'Kalau semua hasil ERROR, klik TEST KONEKSI PROXY dulu untuk cek proxy mana yang hidup');
+  }
+
+  // Mode tabs
+  document.querySelectorAll('.mode-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.mode = tab.dataset.mode;
+      document.querySelectorAll('.mode-panel').forEach(p => p.classList.add('hidden'));
+      $(state.mode + 'Input').classList.remove('hidden');
+    });
+  });
+
+  // Settings bindings
+  $('threadsSlider').addEventListener('input', e => {
+    state.config.threads = +e.target.value;
+    $('threadsVal').textContent = e.target.value;
+  });
+  $('delaySlider').addEventListener('input', e => {
+    state.config.delay = +e.target.value;
+    $('delayVal').textContent = e.target.value;
+  });
+  $('retrySlider').addEventListener('input', e => {
+    state.config.retry = +e.target.value;
+    $('retryVal').textContent = e.target.value;
+  });
+  $('shuffleToggle').addEventListener('change', e => state.config.shuffle = e.target.checked);
+  $('proxyToggle').addEventListener('change', e => state.config.useProxy = e.target.checked);
+  $('soundToggle').addEventListener('change', e => state.config.sound = e.target.checked);
+
+  $('bulkUsernames').addEventListener('input', e => {
+    const lines = e.target.value.split('\n').filter(l => l.trim());
+    $('bulkCount').textContent = lines.length;
+  });
+
+  $('fileUpload').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    $('fileName').textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const lines = ev.target.result.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      $('fileLoadedCount').textContent = lines.length;
+      const unique = [...new Set(lines)];
+      $('fileUniqueCount').textContent = unique.length;
+      $('fileStats').classList.remove('hidden');
+      state.usernames = unique;
+      toast(`Loaded ${unique.length} unique usernames`, 'success');
+    };
+    reader.readAsText(file);
+  });
+
+  // Drag & drop
+  const dropZone = $('dropZone');
+  ['dragover', 'dragenter'].forEach(ev => {
+    dropZone.addEventListener(ev, e => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--accent)';
+      dropZone.style.background = 'rgba(224,64,251,0.08)';
+    });
+  });
+  ['dragleave', 'drop'].forEach(ev => {
+    dropZone.addEventListener(ev, e => {
+      e.preventDefault();
+      dropZone.style.borderColor = '';
+      dropZone.style.background = '';
+    });
+  });
+  dropZone.addEventListener('drop', e => {
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      $('fileUpload').files = e.dataTransfer.files;
+      $('fileUpload').dispatchEvent(new Event('change'));
+    }
+  });
+
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.filter = chip.dataset.filter;
+      applyFilter();
+    });
+  });
+
+  function applyFilter() {
+    document.querySelectorAll('.term-line').forEach(line => {
+      const type = line.dataset.type;
+      if (state.filter === 'all' || type === state.filter) {
+        line.style.display = '';
+      } else {
+        line.style.display = 'none';
+      }
+    });
+  }
+
+  function toast(msg, type = 'info') {
+    const t = $('toast');
+    const icon = $('toastIcon');
+    $('toastMsg').textContent = msg;
+    const icons = { info: 'fa-info-circle', success: 'fa-check-circle', warning: 'fa-exclamation-triangle', error: 'fa-times-circle' };
+    const colors = { info: 'var(--accent-2)', success: 'var(--valid)', warning: 'var(--warning)', error: 'var(--taken)' };
+    icon.className = 'fas ' + icons[type];
+    icon.style.color = colors[type];
+    t.classList.add('show');
+    clearTimeout(t._timeout);
+    t._timeout = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  function logTerm(type, message) {
+    const now = new Date();
+    const time = now.toTimeString().slice(0,8);
+    const line = document.createElement('div');
+    line.className = 'term-line';
+    line.dataset.type = type;
+
+    const colors = {
+      valid: '#22c55e',
+      taken: '#ef4444',
+      invalid: '#f97316',
+      error: '#f59e0b',
+      info: '#22d3ee',
+      system: '#a78bfa'
+    };
+    const tags = {
+      valid: '[VALID]',
+      taken: '[TAKEN]',
+      invalid: '[INVALID]',
+      error: '[ERROR]',
+      info: '[INFO]',
+      system: '[SYS]'
+    };
+
+    line.innerHTML = `
+      <span class="term-time">[${time}]</span>
+      <span class="term-tag" style="color: ${colors[type]}">${tags[type]}</span>
+      <span style="color: ${colors[type]}">${escapeHtml(message)}</span>
+    `;
+
+    terminalBody.appendChild(line);
+
+    if (state.filter !== 'all' && type !== state.filter) {
+      line.style.display = 'none';
+    }
+
+    while (terminalBody.children.length > 1500) {
+      terminalBody.removeChild(terminalBody.firstChild);
+    }
+
+    terminalBody.scrollTop = terminalBody.scrollHeight;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  let audioCtx;
+  function beep(freq = 800, duration = 60, type = 'sine', vol = 0.04) {
+    if (!state.config.sound) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.value = vol;
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration/1000);
+      osc.stop(audioCtx.currentTime + duration/1000);
+    } catch(e) {}
+  }
+
+  function setStatus(status, text) {
+    $('statusDot').className = 'status-dot ' + status;
+    $('statusText').textContent = text;
+    const pulse = $('pulseLine');
+    if (pulse) {
+      pulse.classList.toggle('idle', status !== 'running');
+      pulse.querySelector('path').classList.toggle('animated', status === 'running');
+    }
+  }
+
+  function bumpStat(id) {
+    const el = $(id);
+    el.classList.remove('bump');
+    void el.offsetWidth;
+    el.classList.add('bump');
+  }
+
+  function updateStats() {
+    $('statValid').textContent = state.stats.valid;
+    $('statTaken').textContent = state.stats.taken;
+    $('statInvalid').textContent = state.stats.invalid;
+    $('statErrors').textContent = state.stats.errors;
+    $('processedCount').textContent = state.stats.processed;
+    $('totalCount').textContent = state.stats.total;
+
+    const pct = state.stats.total > 0 ? (state.stats.processed / state.stats.total) * 100 : 0;
+    $('progressPercent').textContent = pct.toFixed(1) + '%';
+    $('progressFill').style.width = pct + '%';
+
+    $('filterAll').textContent = state.stats.processed;
+    $('filterValid').textContent = state.stats.valid;
+    $('filterTaken').textContent = state.stats.taken;
+    $('filterInvalid').textContent = state.stats.invalid;
+    $('filterErr').textContent = state.stats.errors;
+
+    if (state.running && state.stats.processed > 0 && state.stats.processed < state.stats.total) {
+      const elapsed = (Date.now() - state.startTime) / 1000;
+      const rate = state.stats.processed / elapsed;
+      const remaining = (state.stats.total - state.stats.processed) / rate;
+      const m = Math.floor(remaining / 60);
+      const s = Math.floor(remaining % 60);
+      $('etaTime').textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    } else if (state.stats.processed >= state.stats.total && state.stats.total > 0) {
+      $('etaTime').textContent = '00:00';
+    }
+  }
+
+  function updateRps() {
+    const now = Math.floor(Date.now() / 1000);
+    if (state._lastSec !== now) {
+      state._lastSec = now;
+      state.rpsHistory.shift();
+      state.rpsHistory.push(state.lastSecondReqs);
+      if (state.lastSecondReqs > state.rpsPeak) state.rpsPeak = state.lastSecondReqs;
+      state.lastSecondReqs = 0;
+      $('peakRps').textContent = state.rpsPeak;
+
+      const max = Math.max(...state.rpsHistory, 1);
+      const bar = $('rpsBar');
+      bar.innerHTML = '';
+      state.rpsHistory.forEach(v => {
+        const b = document.createElement('div');
+        b.className = 'bar';
+        b.style.height = (v / max * 100) + '%';
+        bar.appendChild(b);
+      });
+    }
+    $('rpsCounter').textContent = state.rpsHistory[state.rpsHistory.length - 1] || 0;
+  }
+  setInterval(updateRps, 200);
+
+  // === Daftar proxy CORS (publik, gratis, jadi kadang mati / rate-limited) ===
+  // Setiap fungsi menerima URL target dan mengembalikan URL proxy + cara membaca hasilnya (raw text atau perlu di-unwrap dari JSON)
+  const PROXIES = [
+    { name: 'codetabs',   build: u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u), unwrap: null },
+    { name: 'allorigins', build: u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u), unwrap: null },
+    { name: 'allorigins-get', build: u => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u), unwrap: 'contents' },
+    { name: 'corsproxy.io', build: u => 'https://corsproxy.io/?url=' + encodeURIComponent(u), unwrap: null }
+  ];
+
+  async function fetchViaProxy(proxy, targetUrl, timeoutMs) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(proxy.build(targetUrl), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      const raw = await res.text();
+      if (!res.ok) {
+        return { ok: false, status: res.status, snippet: raw.slice(0, 80) };
+      }
+      let text = raw;
+      if (proxy.unwrap) {
+        // beberapa proxy membungkus hasil di dalam field JSON, misal { contents: "..." }
+        try {
+          const wrapper = JSON.parse(raw);
+          text = wrapper[proxy.unwrap];
+        } catch (e) {
+          return { ok: false, status: 'unwrap-fail', snippet: raw.slice(0, 80) };
+        }
+      }
+      try {
+        const data = JSON.parse(text);
+        return { ok: true, data };
+      } catch (e) {
+        return { ok: false, status: 'not-json', snippet: String(text).slice(0, 80) };
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const reason = err.name === 'AbortError' ? 'timeout' : err.message;
+      return { ok: false, status: reason, snippet: '' };
+    }
+  }
+
+  async function checkUsername(username) {
+    const baseUrl = 'https://auth.roblox.com/v1/usernames/validate';
+    const params = `?birthday=2006-09-21T07:00:00.000Z&context=Signup&username=${encodeURIComponent(username)}`;
+    const targetUrl = baseUrl + params;
+
+    const attempts = state.config.useProxy ? PROXIES : [{ name: 'direct', build: u => u, unwrap: null }];
+    const maxAttempts = Math.max(1, state.config.retry + 1);
+
+    let lastErr = null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (!state.running) return;
+
+      const proxy = attempts[attempt % attempts.length];
+      const result = await fetchViaProxy(proxy, targetUrl, 12000);
+      state.lastSecondReqs++;
+
+      if (result.ok) {
+        handleResult(username, result.data);
+        return;
+      }
+
+      lastErr = `${proxy.name}: ${result.status}${result.snippet ? ' — "' + result.snippet + '"' : ''}`;
+
+      if (attempt < maxAttempts - 1) {
+        await sleep(300 * (attempt + 1));
+      }
+    }
+
+    if (state.running) {
+      state.stats.processed++;
+      state.stats.errors++;
+      state.results.errors.push(username);
+      logTerm('error', `${username} - semua proxy gagal (${lastErr})`);
+      bumpStat('statErrors');
+      updateStats();
+    }
+  }
+
+  function handleResult(username, data) {
+    state.stats.processed++;
+
+    // Roblox membalas error dalam bentuk { errors: [{ code, message }] } untuk kasus tertentu
+    // (misal birthday tidak valid / rate limited), bukan { code, message } biasa.
+    if (data && Array.isArray(data.errors) && data.errors.length) {
+      const e = data.errors[0];
+      state.stats.errors++;
+      state.results.errors.push(username);
+      logTerm('error', `${username} - API error: ${e.message || ('code ' + e.code)}`);
+      bumpStat('statErrors');
+      updateStats();
+      return;
+    }
+
+    switch(data.code) {
+      case 0:
+        state.stats.valid++;
+        state.results.valid.push(username);
+        logTerm('valid', `${username} tersedia!`);
+        bumpStat('statValid');
+        beep(880, 80, 'sine');
+        break;
+      case 1:
+        state.stats.taken++;
+        state.results.taken.push(username);
+        logTerm('taken', `${username} sudah dipakai`);
+        bumpStat('statTaken');
+        beep(220, 50, 'square');
+        break;
+      case 2:
+        state.stats.invalid++;
+        state.results.invalid.push(username);
+        logTerm('invalid', `${username} invalid (filtered)`);
+        bumpStat('statInvalid');
+        beep(330, 50, 'sawtooth');
+        break;
+      case 10:
+        state.stats.invalid++;
+        state.results.invalid.push(username);
+        logTerm('invalid', `${username} mengandung info privat`);
+        bumpStat('statInvalid');
+        break;
+      default:
+        state.stats.errors++;
+        state.results.errors.push(username);
+        logTerm('error', `Unknown code ${data.code} - ${username}`);
+        bumpStat('statErrors');
+    }
+    updateStats();
+  }
+
+  async function runPool(items, workerFn, concurrency) {
+    const queue = [...items];
+
+    async function worker() {
+      while (queue.length > 0 && state.running) {
+        const item = queue.shift();
+        if (!item) break;
+        await workerFn(item);
+        if (state.config.delay > 0 && state.running) {
+          await sleep(state.config.delay + Math.random() * 100);
+        }
+      }
+    }
+
+    const workers = [];
+    for (let i = 0; i < concurrency; i++) workers.push(worker());
+    await Promise.all(workers);
+  }
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  async function testConnection() {
+    logTerm('system', 'Menguji konektivitas semua proxy...');
+    toast('Testing proxy...', 'info');
+    const targetUrl = 'https://auth.roblox.com/v1/usernames/validate?birthday=2006-09-21T07:00:00.000Z&context=Signup&username=Roblox';
+    for (const proxy of PROXIES) {
+      const result = await fetchViaProxy(proxy, targetUrl, 10000);
+      if (result.ok) {
+        logTerm('valid', `${proxy.name}: OK`);
+      } else {
+        logTerm('error', `${proxy.name}: GAGAL (${result.status}${result.snippet ? ' — "' + result.snippet + '"' : ''})`);
+      }
+    }
+    logTerm('system', 'Test selesai. Kalau semua GAGAL, kemungkinan besar jaringan/browser Anda memblokir proxy ini (coba jaringan lain atau matikan ad-blocker/VPN).');
+  }
+
+  async function start() {
+    let usernames = [];
+    if (state.mode === 'single') {
+      const u = $('singleUsername').value.trim();
+      if (!u) { toast('Masukkan username dulu', 'warning'); return; }
+      usernames = [u];
+    } else if (state.mode === 'bulk') {
+      const text = $('bulkUsernames').value;
+      usernames = [...new Set(text.split('\n').map(l => l.trim()).filter(Boolean))];
+      if (usernames.length === 0) { toast('List username kosong', 'warning'); return; }
+    } else if (state.mode === 'file') {
+      usernames = [...state.usernames];
+      if (usernames.length === 0) { toast('Upload file dulu', 'warning'); return; }
+    }
+
+    if (state.config.shuffle) {
+      for (let i = usernames.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [usernames[i], usernames[j]] = [usernames[j], usernames[i]];
+      }
+    }
+
+    state.stats = { processed: 0, total: usernames.length, valid: 0, taken: 0, invalid: 0, errors: 0 };
+    state.results = { valid: [], taken: [], invalid: [], errors: [] };
+    state.running = true;
+    state.startTime = Date.now();
+    state.rpsPeak = 0;
+    state.rpsHistory = new Array(40).fill(0);
+
+    $('startBtn').disabled = true;
+    $('stopBtn').disabled = false;
+    setStatus('running', 'RUNNING');
+
+    logTerm('system', `Memulai pengecekan ${usernames.length} username dengan ${state.config.threads} threads...`);
+    toast(`Started: ${usernames.length} usernames`, 'success');
+    updateStats();
+
+    await runPool(usernames, checkUsername, state.config.threads);
+
+    state.running = false;
+    $('startBtn').disabled = false;
+    $('stopBtn').disabled = true;
+    setStatus('idle', 'IDLE');
+
+    logTerm('system', `Selesai! Valid: ${state.stats.valid} | Taken: ${state.stats.taken} | Invalid: ${state.stats.invalid} | Errors: ${state.stats.errors}`);
+    toast(`Selesai! ${state.stats.valid} valid ditemukan`, 'success');
+    beep(660, 100); setTimeout(() => beep(880, 150), 120);
+  }
+
+  function stop() {
+    state.running = false;
+    $('startBtn').disabled = false;
+    $('stopBtn').disabled = true;
+    setStatus('idle', 'STOPPED');
+    logTerm('system', 'Dihentikan oleh user');
+    toast('Stopped', 'warning');
+  }
+
+  function clearAll() {
+    state.results = { valid: [], taken: [], invalid: [], errors: [] };
+    state.stats = { processed: 0, total: 0, valid: 0, taken: 0, invalid: 0, errors: 0 };
+    terminalBody.innerHTML = '';
+    logTerm('system', 'Terminal dibersihkan. Siap untuk session baru.');
+    updateStats();
+    toast('Dibersihkan', 'info');
+  }
+
+  function download() {
+    if (state.results.valid.length === 0) {
+      toast('Belum ada hasil valid untuk didownload', 'warning');
+      return;
+    }
+    const content = state.results.valid.join('\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `roblox_valid_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`${state.results.valid.length} valid usernames didownload`, 'success');
+  }
+
+  $('startBtn').addEventListener('click', start);
+  $('stopBtn').addEventListener('click', stop);
+  $('clearBtn').addEventListener('click', clearAll);
+  $('downloadBtn').addEventListener('click', download);
+  $('testBtn').addEventListener('click', testConnection);
+  $('checkSingleBtn').addEventListener('click', () => {
+    document.querySelector('.mode-tab[data-mode="single"]').click();
+    start();
+  });
+
+  $('singleUsername').addEventListener('keydown', e => {
+    if (e.key === 'Enter') start();
+  });
+
+  updateStats();
+  setStatus('idle', 'IDLE');
+  bootMessage();
+</script>
+</body>
+</html>
