@@ -1,0 +1,843 @@
+<!--
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HTML5 Game | Kebun Platformer - RenSG (v2.0) | by RenSG
+Description: Game platformer 2D menanam & memanen buah. Canvas-based physics
+             (gravity + jump), sistem tanam bibit di plot tanah, animasi
+             pertumbuhan tanaman (lerp scale menyerupai scaleTo), dan panen
+             dengan hasil acak 1-3 buah berbasis chance/weighted random.
+Dependencies: Google Fonts "Fredoka" (dimuat via CDN saat runtime browser)
+
+Change Log:
+v1.0 - Initial release
+v2.0 - UI/UX overhaul bergaya Growtopia (hotbar bibit, modal tas & toko, pill
+       koin), layout full responsive desktop & mobile, dukungan virtual touch
+       controls (d-pad + tombol aksi/lompat) berdampingan dengan keyboard,
+       viewport & safe-area handling untuk perangkat mobile, DPR scaling agar
+       canvas tetap tajam di layar retina tanpa mengubah logic koordinat.
+v2.1 - Fix layout terpotong di sebagian device: ukuran #gameWrap kini dihitung
+       via JS (window.visualViewport) tiap resize/orientationchange, bukan
+       murni CSS aspect-ratio + 100vh (yang tidak akurat di browser mobile
+       karena address bar). Platform melayang (area pijak) direstyle jadi
+       papan kayu bergaya Growtopia (gradient + sambungan papan + rivet).
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Kebun Platformer - RenSG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: radial-gradient(circle at 50% 20%, #1e3a5f, #0f172a 70%);
+    font-family: 'Fredoka', 'Segoe UI', Tahoma, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  #gameWrap {
+    position: relative;
+    margin: 0 auto;
+    /* width & height diset via JS (fitGameToViewport) agar selalu pas
+       "contain" di viewport asli device, tidak mengandalkan 100vh CSS
+       yang tidak akurat di browser mobile (address bar dinamis). */
+  }
+
+  #gameCanvas {
+    display: block;
+    width: 100%; height: 100%;
+    background: #74c0fc;
+    border-radius: 14px;
+    box-shadow: 0 16px 50px rgba(0,0,0,0.55);
+    touch-action: none;
+  }
+
+  /* ===== TOP BAR ===== */
+  #topBar {
+    position: absolute;
+    top: max(10px, env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .pill {
+    display: flex; align-items: center; gap: 6px;
+    background: linear-gradient(180deg, #fffbeb, #fde68a);
+    border: 2px solid #b45309;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-weight: 700; font-size: 15px; color: #78350f;
+    box-shadow: 0 3px 0 #92400e, 0 6px 14px rgba(0,0,0,0.35);
+  }
+  .pill .icon { font-size: 17px; }
+
+  #topIcons { display: flex; gap: 8px; }
+  .iconBtn {
+    width: 44px; height: 44px;
+    border-radius: 14px;
+    border: 2px solid #1e293b;
+    background: linear-gradient(180deg, #60a5fa, #2563eb);
+    color: #fff; font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #1d4ed8, 0 6px 12px rgba(0,0,0,0.35);
+    touch-action: manipulation;
+    transition: transform 0.08s ease;
+  }
+  .iconBtn:active { transform: translateY(2px); box-shadow: 0 1px 0 #1d4ed8, 0 3px 6px rgba(0,0,0,0.3); }
+
+  /* ===== HOTBAR ===== */
+  #hotbar {
+    position: absolute;
+    left: 50%; transform: translateX(-50%);
+    bottom: max(14px, env(safe-area-inset-bottom));
+    display: flex; gap: 8px;
+    background: rgba(15,23,42,0.55);
+    padding: 8px; border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(3px);
+  }
+  .slot {
+    position: relative;
+    width: 54px; height: 54px;
+    border-radius: 12px;
+    background: linear-gradient(160deg, #a97142, #7c4a24);
+    border: 2px solid #4b2e14;
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.25), inset 0 -3px 6px rgba(0,0,0,0.35);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.08s ease, box-shadow 0.12s ease;
+  }
+  .slot.selected {
+    border-color: #fde047;
+    box-shadow: 0 0 0 3px rgba(253,224,71,0.55), inset 0 2px 4px rgba(255,255,255,0.3);
+    transform: translateY(-3px);
+  }
+  .slot .fruitDot {
+    width: 22px; height: 22px; border-radius: 50%;
+    box-shadow: inset 0 -3px 4px rgba(0,0,0,0.25), inset 0 2px 3px rgba(255,255,255,0.4);
+  }
+  .slot .keyHint {
+    position: absolute; top: 2px; left: 5px;
+    font-size: 10px; color: rgba(255,255,255,0.7); font-weight: 600;
+  }
+  .slot .countBadge {
+    position: absolute; bottom: -5px; right: -5px;
+    min-width: 18px; height: 18px; padding: 0 3px;
+    background: #fde047; color: #78350f;
+    border-radius: 999px; border: 1px solid #92400e;
+    font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ===== MODAL (Tas & Toko) ===== */
+  #modalOverlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 10;
+  }
+  #modalOverlay.open { display: flex; }
+  .modalPanel {
+    display: none;
+    width: min(320px, 86%);
+    background: linear-gradient(180deg, #fef9ec, #fde68a);
+    border: 3px solid #92400e;
+    border-radius: 18px;
+    padding: 16px;
+    color: #78350f;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    animation: popIn 0.16s ease;
+  }
+  .modalPanel.open { display: block; }
+  @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modalPanel h3 { margin: 0 0 12px; font-size: 18px; text-align: center; }
+  .modalItem {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.35);
+    border-radius: 10px; padding: 8px 10px; margin-bottom: 8px;
+  }
+  .modalItem .itemInfo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
+  .modalItem .fruitDot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
+  .gameBtn {
+    border: none; border-radius: 10px; padding: 8px 12px;
+    font-weight: 700; font-size: 12px; cursor: pointer;
+    font-family: inherit;
+    touch-action: manipulation;
+  }
+  .gameBtn.buy { background: linear-gradient(180deg,#4ade80,#16a34a); color: #052e16; box-shadow: 0 3px 0 #15803d; }
+  .gameBtn.buy:disabled { background: #9ca3af; color: #4b5563; box-shadow: 0 3px 0 #6b7280; cursor: not-allowed; }
+  .gameBtn.sell { background: linear-gradient(180deg,#fde047,#f59e0b); color: #78350f; box-shadow: 0 3px 0 #b45309; width: 100%; margin-top: 6px; font-size: 14px; padding: 10px; }
+  .gameBtn:active { transform: translateY(2px); box-shadow: none !important; }
+  .closeHint { text-align: center; font-size: 11px; opacity: 0.65; margin-top: 8px; }
+
+  /* ===== DESKTOP CONTROLS HINT ===== */
+  #controlsHint {
+    position: absolute; bottom: 82px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,0.85); font-size: 11px;
+    background: rgba(15,23,42,0.55); padding: 5px 10px; border-radius: 8px;
+    white-space: nowrap;
+  }
+
+  /* ===== TOUCH CONTROLS ===== */
+  #touchControls { display: none; position: absolute; inset: 0; pointer-events: none; }
+  .ctrlBtn {
+    position: absolute;
+    border-radius: 999px;
+    border: 2px solid rgba(255,255,255,0.4);
+    background: rgba(15,23,42,0.55);
+    color: #fff; font-size: 22px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+  }
+  .ctrlBtn:active { background: rgba(59,130,246,0.6); transform: scale(0.92); }
+  #btnLeft  { left: max(16px, env(safe-area-inset-left));  bottom: max(90px, env(safe-area-inset-bottom)); width: 58px; height: 58px; }
+  #btnRight { left: max(84px, env(safe-area-inset-left));  bottom: max(90px, env(safe-area-inset-bottom)); width: 58px; height: 58px; }
+  #btnAction{ right: max(96px, env(safe-area-inset-right)); bottom: max(96px, env(safe-area-inset-bottom)); width: 62px; height: 62px; font-size: 16px; background: rgba(234,88,12,0.55); }
+  #btnJump  { right: max(16px, env(safe-area-inset-right)); bottom: max(90px, env(safe-area-inset-bottom)); width: 66px; height: 66px; background: rgba(22,163,74,0.55); }
+
+  body.touch-device #touchControls { display: block; }
+  body.touch-device #controlsHint { display: none; }
+  @media (max-width: 820px) {
+    #touchControls { display: block; }
+    #controlsHint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="gameWrap">
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="topBar">
+    <div class="pill"><span class="icon">🪙</span><span id="coinsVal">0</span></div>
+    <div id="topIcons">
+      <button class="iconBtn" id="backpackToggle" title="Tas">🎒</button>
+      <button class="iconBtn" id="shopToggle" title="Toko">🛒</button>
+    </div>
+  </div>
+
+  <div id="hotbar"></div>
+
+  <div id="controlsHint">
+    A/D atau ◀▶ gerak &nbsp;|&nbsp; W/Space/▲ lompat &nbsp;|&nbsp; 1-4 pilih bibit &nbsp;|&nbsp; E tanam/panen &nbsp;|&nbsp; I tas &nbsp;|&nbsp; B toko
+  </div>
+
+  <div id="touchControls">
+    <button class="ctrlBtn" id="btnLeft">◀</button>
+    <button class="ctrlBtn" id="btnRight">▶</button>
+    <button class="ctrlBtn" id="btnAction">AKSI</button>
+    <button class="ctrlBtn" id="btnJump">⤒</button>
+  </div>
+
+  <div id="modalOverlay">
+    <div class="modalPanel" id="backpackPanel">
+      <h3>🎒 Tas Buah</h3>
+      <div id="backpackList"></div>
+      <button class="gameBtn sell" id="sellAllBtn">Jual Semua Buah</button>
+      <div class="closeHint">Ketuk area luar untuk menutup</div>
+    </div>
+    <div class="modalPanel" id="shopPanel">
+      <h3>🌱 Toko Bibit</h3>
+      <div id="shopList"></div>
+      <div class="closeHint">Ketuk area luar untuk menutup</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ============================================================
+  // KONFIGURASI DASAR
+  // ============================================================
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // Resolusi logis game tetap 960x540 (semua logic/physics pakai koordinat ini).
+  // Buffer fisik canvas disesuaikan dengan devicePixelRatio agar tajam di layar retina,
+  // tanpa mengubah satu pun koordinat game logic.
+  const LOGICAL_W = 960, LOGICAL_H = 540;
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = LOGICAL_W * DPR;
+  canvas.height = LOGICAL_H * DPR;
+  ctx.scale(DPR, DPR);
+  const CW = LOGICAL_W, CH = LOGICAL_H;
+
+  // ============================================================
+  // AUTOSCALE VIEWPORT (mobile & desktop)
+  // Dihitung manual via JS, bukan CSS aspect-ratio + 100vh, karena 100vh
+  // tidak akurat di browser mobile (address bar bisa muncul/hilang dan
+  // mengubah tinggi asli viewport). window.visualViewport memberi ukuran
+  // area yang benar-benar terlihat, sehingga game selalu "contain" penuh
+  // tanpa terpotong di sisi manapun.
+  // ============================================================
+  const gameWrap = document.getElementById('gameWrap');
+  const TARGET_RATIO = LOGICAL_W / LOGICAL_H;
+
+  function fitGameToViewport() {
+    const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+    const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    let w, h;
+    if (vw / vh > TARGET_RATIO) {
+      h = vh;
+      w = h * TARGET_RATIO;
+    } else {
+      w = vw;
+      h = w / TARGET_RATIO;
+    }
+    gameWrap.style.width = w + 'px';
+    gameWrap.style.height = h + 'px';
+  }
+
+  window.addEventListener('resize', fitGameToViewport);
+  window.addEventListener('orientationchange', fitGameToViewport);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', fitGameToViewport);
+  fitGameToViewport();
+
+  const GRAVITY = 1700;
+
+  const PLANT_TYPES = {
+    1: { id:1, name:'Stroberi', color:'#ef4444', leafColor:'#16a34a', growTime:6000,  stages:4, seedPrice:5,  fruitValue:3  },
+    2: { id:2, name:'Apel',     color:'#dc2626', leafColor:'#15803d', growTime:9000,  stages:4, seedPrice:10, fruitValue:5  },
+    3: { id:3, name:'Jeruk',    color:'#f97316', leafColor:'#166534', growTime:12000, stages:4, seedPrice:15, fruitValue:7  },
+    4: { id:4, name:'Anggur',   color:'#9333ea', leafColor:'#166534', growTime:15000, stages:5, seedPrice:20, fruitValue:10 },
+  };
+
+  // ============================================================
+  // STATE EKONOMI
+  // ============================================================
+  let coins = 15;
+  const seeds  = { 1:3, 2:0, 3:0, 4:0 };
+  const fruits = { 1:0, 2:0, 3:0, 4:0 };
+  let selectedType = 1;
+
+  // ============================================================
+  // PLAYER & PLATFORM
+  // ============================================================
+  const player = {
+    x: 60, y: 400, w: 34, h: 46,
+    vx: 0, vy: 0,
+    speed: 260, jumpForce: 660,
+    onGround: false, facing: 1,
+  };
+  const SPAWN = { x: 60, y: 400 };
+
+  const platforms = [
+    { x: 0,   y: 480, w: 960, h: 60, type: 'ground' },
+    { x: 560, y: 350, w: 260, h: 22, type: 'wood' },
+  ];
+
+  function makePlot(x, y) {
+    return { x, y, w: 52, h: 20, state: 'empty', type: null, progress: 0, scale: 0, stage: 0 };
+  }
+  const plots = [
+    makePlot(90,  456),
+    makePlot(220, 456),
+    makePlot(350, 456),
+    makePlot(600, 326),
+    makePlot(700, 326),
+    makePlot(760, 326),
+  ];
+
+  // ============================================================
+  // INPUT: KEYBOARD (desktop)
+  // ============================================================
+  const keys = {};
+  window.addEventListener('keydown', (e) => {
+    if (['ArrowLeft','ArrowRight','ArrowUp','Space'].includes(e.code)) e.preventDefault();
+    if (keys[e.code]) return;
+    keys[e.code] = true;
+    handleActionKey(e.code);
+  });
+  window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+  function handleActionKey(code) {
+    if (code === 'Digit1') selectSeed(1);
+    if (code === 'Digit2') selectSeed(2);
+    if (code === 'Digit3') selectSeed(3);
+    if (code === 'Digit4') selectSeed(4);
+    if (code === 'KeyB') openModal('shop');
+    if (code === 'KeyI') openModal('backpack');
+    if (code === 'KeyE') interactWithNearestPlot();
+    if (code === 'KeyF') sellAllFruits();
+  }
+
+  // ============================================================
+  // INPUT: TOUCH CONTROLS (mobile) — menulis ke object `keys` yang sama
+  // supaya tidak ada duplikasi logic dengan keyboard.
+  // ============================================================
+  const isTouchDevice =
+    ('ontouchstart' in window) ||
+    navigator.maxTouchPoints > 0 ||
+    window.matchMedia('(pointer: coarse)').matches;
+  if (isTouchDevice) document.body.classList.add('touch-device');
+
+  function bindHold(el, code) {
+    const press = (e) => { e.preventDefault(); keys[code] = true; };
+    const release = (e) => { e.preventDefault(); keys[code] = false; };
+    el.addEventListener('pointerdown', press);
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    el.addEventListener('pointerleave', release);
+  }
+  function bindTap(el, fn) {
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); fn(); });
+  }
+
+  bindHold(document.getElementById('btnLeft'), 'ArrowLeft');
+  bindHold(document.getElementById('btnRight'), 'ArrowRight');
+  bindHold(document.getElementById('btnJump'), 'Space');
+  bindTap(document.getElementById('btnAction'), interactWithNearestPlot);
+
+  // ============================================================
+  // RANDOM HASIL PANEN (1-3 BUAH DENGAN CHANCE)
+  // ============================================================
+  function randomFruitYield() {
+    const r = Math.random() * 100;
+    if (r < 50) return 1;
+    if (r < 85) return 2;
+    return 3;
+  }
+
+  // ============================================================
+  // FLOATING TEXT
+  // ============================================================
+  const floatTexts = [];
+  function spawnFloatText(x, y, text, color = '#fde047') {
+    floatTexts.push({ x, y, text, color, life: 1.2, vy: -40 });
+  }
+
+  // ============================================================
+  // LOGIKA TANAM / PANEN
+  // ============================================================
+  function distanceToPlot(plot) {
+    const plotCenterX = plot.x + plot.w / 2;
+    const playerCenterX = player.x + player.w / 2;
+    const playerFeetY = player.y + player.h;
+    const closeX = Math.abs(plotCenterX - playerCenterX) < 46;
+    const closeY = Math.abs(playerFeetY - plot.y) < 34;
+    return closeX && closeY;
+  }
+
+  function findNearestInteractablePlot() {
+    let nearest = null;
+    let bestDist = Infinity;
+    for (const plot of plots) {
+      if (!distanceToPlot(plot)) continue;
+      const d = Math.abs((plot.x + plot.w/2) - (player.x + player.w/2));
+      if (d < bestDist) { bestDist = d; nearest = plot; }
+    }
+    return nearest;
+  }
+
+  function interactWithNearestPlot() {
+    const plot = findNearestInteractablePlot();
+    if (!plot) return;
+    if (plot.state === 'empty') plantSeed(plot);
+    else if (plot.state === 'mature') harvestPlot(plot);
+    else spawnFloatText(plot.x + plot.w/2, plot.y - 10, 'Belum siap...', '#94a3b8');
+  }
+
+  function plantSeed(plot) {
+    if (seeds[selectedType] <= 0) {
+      spawnFloatText(plot.x + plot.w/2, plot.y - 10, 'Bibit habis!', '#f87171');
+      return;
+    }
+    seeds[selectedType]--;
+    plot.state = 'growing';
+    plot.type = selectedType;
+    plot.progress = 0;
+    plot.scale = 0;
+    plot.stage = 0;
+    refreshHUD();
+  }
+
+  function harvestPlot(plot) {
+    const info = PLANT_TYPES[plot.type];
+    const count = randomFruitYield();
+    fruits[plot.type] += count;
+    spawnFloatText(plot.x + plot.w/2, plot.y - 10, `+${count} ${info.name}!`, info.color);
+    plot.state = 'empty';
+    plot.type = null;
+    plot.progress = 0;
+    plot.scale = 0;
+    plot.stage = 0;
+    refreshHUD();
+  }
+
+  function sellAllFruits() {
+    let totalCoins = 0, totalCount = 0;
+    for (const key in fruits) {
+      const info = PLANT_TYPES[key];
+      totalCoins += fruits[key] * info.fruitValue;
+      totalCount += fruits[key];
+      fruits[key] = 0;
+    }
+    if (totalCount === 0) {
+      spawnFloatText(player.x + player.w/2, player.y - 10, 'Tidak ada buah', '#94a3b8');
+      return;
+    }
+    coins += totalCoins;
+    spawnFloatText(player.x + player.w/2, player.y - 20, `+🪙${totalCoins}`, '#fde047');
+    refreshHUD();
+  }
+
+  function buySeed(typeId) {
+    const info = PLANT_TYPES[typeId];
+    if (coins < info.seedPrice) return;
+    coins -= info.seedPrice;
+    seeds[typeId]++;
+    refreshHUD();
+  }
+
+  function selectSeed(typeId) {
+    selectedType = typeId;
+    refreshHUD();
+  }
+
+  // ============================================================
+  // UPDATE PERTUMBUHAN TANAMAN (ANIMASI SCALE / "scaleTo")
+  // ============================================================
+  function updatePlants(dt) {
+    for (const plot of plots) {
+      if (plot.state !== 'growing') continue;
+      const info = PLANT_TYPES[plot.type];
+      plot.progress += dt * 1000 / info.growTime;
+      if (plot.progress >= 1) { plot.progress = 1; plot.state = 'mature'; }
+      plot.stage = Math.min(info.stages - 1, Math.floor(plot.progress * info.stages));
+      const targetScale = Math.min(1, (plot.stage + 1) / info.stages);
+      const lerpSpeed = 1 - Math.pow(0.001, dt);
+      plot.scale += (targetScale - plot.scale) * lerpSpeed;
+    }
+  }
+
+  // ============================================================
+  // FISIKA PLAYER
+  // ============================================================
+  function updatePlayer(dt) {
+    player.vx = 0;
+    if (keys['ArrowLeft'] || keys['KeyA']) { player.vx = -player.speed; player.facing = -1; }
+    if (keys['ArrowRight'] || keys['KeyD']) { player.vx = player.speed; player.facing = 1; }
+    if ((keys['ArrowUp'] || keys['KeyW'] || keys['Space']) && player.onGround) {
+      player.vy = -player.jumpForce;
+      player.onGround = false;
+    }
+
+    player.vy += GRAVITY * dt;
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+    player.x = Math.max(0, Math.min(CW - player.w, player.x));
+
+    player.onGround = false;
+    for (const p of platforms) {
+      const overlapX = player.x + player.w > p.x && player.x < p.x + p.w;
+      const feetY = player.y + player.h;
+      const wasAbove = feetY - player.vy * dt <= p.y + 4;
+      if (overlapX && player.vy >= 0 && feetY >= p.y && feetY <= p.y + p.h + 12 && wasAbove) {
+        player.y = p.y - player.h;
+        player.vy = 0;
+        player.onGround = true;
+      }
+    }
+
+    if (player.y > CH + 100) {
+      player.x = SPAWN.x; player.y = SPAWN.y; player.vx = 0; player.vy = 0;
+    }
+  }
+
+  function updateFloatTexts(dt) {
+    for (let i = floatTexts.length - 1; i >= 0; i--) {
+      const t = floatTexts[i];
+      t.life -= dt;
+      t.y += t.vy * dt;
+      if (t.life <= 0) floatTexts.splice(i, 1);
+    }
+  }
+
+  // ============================================================
+  // RENDER (dunia game — koordinat logic 960x540, tidak terpengaruh DPR)
+  // ============================================================
+  function drawBackground() {
+    const grad = ctx.createLinearGradient(0, 0, 0, CH);
+    grad.addColorStop(0, '#7dd3fc');
+    grad.addColorStop(1, '#bae6fd');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CW, CH);
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath(); ctx.arc(860, 70, 40, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    drawCloud(140, 90); drawCloud(420, 60); drawCloud(700, 120);
+  }
+
+  function drawCloud(x, y) {
+    ctx.beginPath();
+    ctx.ellipse(x, y, 30, 16, 0, 0, Math.PI*2);
+    ctx.ellipse(x+26, y+6, 22, 13, 0, 0, Math.PI*2);
+    ctx.ellipse(x-24, y+6, 20, 12, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawPlatforms() {
+    for (const p of platforms) {
+      if (p.type === 'wood') drawWoodPlatform(p);
+      else drawGroundPlatform(p);
+    }
+  }
+
+  function drawGroundPlatform(p) {
+    ctx.fillStyle = '#3f6212';
+    ctx.fillRect(p.x, p.y, p.w, 10);
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(p.x, p.y+10, p.w, p.h-10);
+  }
+
+  // Platform kayu bergaya Growtopia: gradient kayu + sambungan antar papan + rivet + bevel tipis
+  function drawWoodPlatform(p) {
+    const grad = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+    grad.addColorStop(0, '#e0995a');
+    grad.addColorStop(1, '#8b5228');
+    ctx.fillStyle = grad;
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+
+    // bevel highlight (atas) & shadow (bawah)
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillRect(p.x, p.y, p.w, 3);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fillRect(p.x, p.y + p.h - 3, p.w, 3);
+
+    // sambungan papan + rivet (baut kecil)
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1;
+    const plankWidth = 48;
+    for (let px = p.x; px < p.x + p.w; px += plankWidth) {
+      ctx.beginPath();
+      ctx.moveTo(px, p.y + 2);
+      ctx.lineTo(px, p.y + p.h - 2);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.arc(px + plankWidth / 2, p.y + p.h / 2, 1.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawPlots() {
+    for (const plot of plots) {
+      ctx.fillStyle = '#5b3a1a';
+      ctx.fillRect(plot.x, plot.y, plot.w, plot.h);
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.fillRect(plot.x, plot.y, plot.w, 4);
+      if (plot.state === 'growing' || plot.state === 'mature') drawPlant(plot);
+      if (plot.state === 'mature') {
+        ctx.fillStyle = '#fde047';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('!', plot.x + plot.w/2, plot.y - 12);
+      }
+    }
+  }
+
+  function drawPlant(plot) {
+    const info = PLANT_TYPES[plot.type];
+    const cx = plot.x + plot.w / 2;
+    const baseY = plot.y;
+    const s = plot.scale;
+    const stemH = 40 * s;
+
+    ctx.strokeStyle = info.leafColor;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(cx, baseY);
+    ctx.lineTo(cx, baseY - stemH);
+    ctx.stroke();
+
+    if (s > 0.15) {
+      ctx.fillStyle = info.leafColor;
+      const leafSize = 10 * s;
+      ctx.beginPath();
+      ctx.ellipse(cx - leafSize, baseY - stemH*0.6, leafSize, leafSize*0.6, 0.6, 0, Math.PI*2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(cx + leafSize, baseY - stemH*0.6, leafSize, leafSize*0.6, -0.6, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    if (plot.progress >= 0.55) {
+      const fruitReveal = Math.min(1, (plot.progress - 0.55) / 0.45);
+      const r = 9 * s * fruitReveal;
+      ctx.fillStyle = info.color;
+      const spread = plot.type === 4 ? 8 : 0;
+      if (spread === 0) {
+        ctx.beginPath(); ctx.arc(cx, baseY - stemH, r, 0, Math.PI*2); ctx.fill();
+      } else {
+        for (const off of [[-spread,0],[spread,0],[0,spread]]) {
+          ctx.beginPath();
+          ctx.arc(cx+off[0], baseY - stemH + off[1], r*0.75, 0, Math.PI*2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  function drawPlayer() {
+    const { x, y, w, h, facing } = player;
+    ctx.fillStyle = '#2563eb';
+    ctx.fillRect(x, y + 14, w, h - 14);
+    ctx.fillStyle = '#fcd34d';
+    ctx.beginPath();
+    ctx.arc(x + w/2, y + 8, 12, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#a16207';
+    ctx.fillRect(x + w/2 - 12, y - 4, 24, 5);
+    ctx.fillRect(x + w/2 - 7, y - 9, 14, 6);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(x + w/2 + (facing > 0 ? 3 : -6), y + 6, 3, 3);
+  }
+
+  function drawFloatTexts() {
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 14px sans-serif';
+    for (const t of floatTexts) {
+      ctx.globalAlpha = Math.max(0, Math.min(1, t.life));
+      ctx.fillStyle = t.color;
+      ctx.fillText(t.text, t.x, t.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function render() {
+    drawBackground();
+    drawPlatforms();
+    drawPlots();
+    drawPlayer();
+    drawFloatTexts();
+  }
+
+  // ============================================================
+  // HUD (DOM) — hotbar, pill koin, modal tas & toko
+  // ============================================================
+  const coinsVal = document.getElementById('coinsVal');
+  const hotbar = document.getElementById('hotbar');
+  const backpackList = document.getElementById('backpackList');
+  const shopList = document.getElementById('shopList');
+  const modalOverlay = document.getElementById('modalOverlay');
+  const backpackPanel = document.getElementById('backpackPanel');
+  const shopPanel = document.getElementById('shopPanel');
+
+  // Bangun slot hotbar sekali saja, lalu update isinya tiap refreshHUD()
+  for (const id in PLANT_TYPES) {
+    const info = PLANT_TYPES[id];
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    slot.dataset.type = id;
+    slot.innerHTML = `
+      <span class="keyHint">${id}</span>
+      <span class="fruitDot" style="background:${info.color}"></span>
+      <span class="countBadge">0</span>
+    `;
+    slot.addEventListener('pointerdown', (e) => { e.preventDefault(); selectSeed(Number(id)); });
+    hotbar.appendChild(slot);
+  }
+
+  function refreshHUD() {
+    coinsVal.textContent = coins;
+
+    // Hotbar: update jumlah bibit & highlight slot terpilih
+    hotbar.querySelectorAll('.slot').forEach((slot) => {
+      const id = slot.dataset.type;
+      slot.classList.toggle('selected', Number(id) === selectedType);
+      slot.querySelector('.countBadge').textContent = seeds[id];
+    });
+
+    // Modal tas: daftar buah
+    backpackList.innerHTML = '';
+    for (const id in PLANT_TYPES) {
+      const info = PLANT_TYPES[id];
+      const row = document.createElement('div');
+      row.className = 'modalItem';
+      row.innerHTML = `
+        <span class="itemInfo"><span class="fruitDot" style="background:${info.color}"></span>${info.name}</span>
+        <span>${fruits[id]} buah</span>
+      `;
+      backpackList.appendChild(row);
+    }
+
+    // Modal toko: daftar bibit + tombol beli
+    shopList.innerHTML = '';
+    for (const id in PLANT_TYPES) {
+      const info = PLANT_TYPES[id];
+      const canBuy = coins >= info.seedPrice;
+      const row = document.createElement('div');
+      row.className = 'modalItem';
+      row.innerHTML = `
+        <span class="itemInfo"><span class="fruitDot" style="background:${info.color}"></span>${info.name} — 🪙${info.seedPrice}</span>
+        <button class="gameBtn buy" ${canBuy ? '' : 'disabled'}>Beli</button>
+      `;
+      row.querySelector('button').addEventListener('pointerdown', (e) => { e.preventDefault(); buySeed(Number(id)); });
+      shopList.appendChild(row);
+    }
+  }
+
+  // ============================================================
+  // MODAL CONTROL
+  // ============================================================
+  let openPanelName = null;
+  function openModal(name) {
+    if (openPanelName === name) { closeModal(); return; }
+    openPanelName = name;
+    modalOverlay.classList.add('open');
+    backpackPanel.classList.toggle('open', name === 'backpack');
+    shopPanel.classList.toggle('open', name === 'shop');
+    refreshHUD();
+  }
+  function closeModal() {
+    openPanelName = null;
+    modalOverlay.classList.remove('open');
+    backpackPanel.classList.remove('open');
+    shopPanel.classList.remove('open');
+  }
+  document.getElementById('backpackToggle').addEventListener('click', () => openModal('backpack'));
+  document.getElementById('shopToggle').addEventListener('click', () => openModal('shop'));
+  modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+  document.getElementById('sellAllBtn').addEventListener('click', sellAllFruits);
+
+  // ============================================================
+  // GAME LOOP
+  // ============================================================
+  let lastTime = performance.now();
+  function loop(now) {
+    let dt = (now - lastTime) / 1000;
+    dt = Math.min(dt, 0.05);
+    lastTime = now;
+
+    updatePlayer(dt);
+    updatePlants(dt);
+    updateFloatTexts(dt);
+    render();
+
+    requestAnimationFrame(loop);
+  }
+
+  refreshHUD();
+  requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>
