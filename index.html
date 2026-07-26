@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Untuk Ayangku Risa, Yang Selalu Kutunggu</title>
+<title>Untuk Risa, yang Selalu Menungguku</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Fredoka:wght@400;500;600;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
@@ -18,6 +18,7 @@
     --wine: #4a2545;
     --wine-light: #6b3760;
     --rose: #e8a0a8;
+    --rose-dark: #a3506a;
     --blush: #f6cfd3;
     --gold: #e3b872;
     --gold-soft: #f0d19e;
@@ -323,7 +324,7 @@
   /* ---------- Kartu Gombal ---------- */
   .cards-grid{
     display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
     gap: 1.4rem;
     max-width: 900px;
     width:100%;
@@ -364,6 +365,7 @@
 
   .flip-front, .flip-back{
     position:absolute; inset:0;
+    -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
     border-radius: 14px;
     display:flex; align-items:center; justify-content:center;
@@ -458,6 +460,9 @@
   }
   .envelope.open .env-flap{ transform: rotateX(180deg); }
 
+  /* BUG FIX: sealPulse animation pakai transform, sehingga saat hover
+     transform:rotate+scale tidak pernah terlihat (animation selalu menimpa).
+     Solusi: hentikan animation saat hover, lalu biarkan transition menghaluskan. */
   .env-seal{
     position:absolute;
     top: 66px; left:50%; transform:translate(-50%,-50%);
@@ -468,7 +473,7 @@
     font-size:1.1rem;
     box-shadow: 0 4px 10px rgba(0,0,0,.35);
     z-index:4;
-    transition: opacity .4s ease, transform .4s ease;
+    transition: opacity .4s ease, transform .35s ease;
     animation: sealPulse 2.4s ease-in-out infinite;
   }
   @keyframes sealPulse{
@@ -476,7 +481,10 @@
     50%{ transform:translate(-50%,-50%) scale(1.08); }
   }
   .envelope.open .env-seal{ opacity:0; pointer-events:none; }
-  .envelope:hover .env-seal{ transform:translate(-50%,-50%) rotate(15deg) scale(1.1); }
+  .envelope:not(.open):hover .env-seal{
+    animation: none;
+    transform: translate(-50%,-50%) rotate(15deg) scale(1.1);
+  }
 
   .env-tap-label{
     position:absolute;
@@ -511,7 +519,7 @@
   .letter .signature{
     text-align:right;
     font-style:italic;
-    color: var(--rose-dark, #a3506a);
+    color: var(--rose-dark);
     margin-top: 1.4rem;
   }
 
@@ -550,10 +558,7 @@
   }
   .final-msg.show{ opacity:1; }
 
-  /* ---------- Tombol musik (vinyl) ----------
-     Catatan perbaikan bug: rotasi & efek hover dipisah ke dua elemen,
-     karena sebelumnya animation transform pada elemen yang sama membuat
-     efek hover-scale tidak pernah terlihat (saling menimpa). */
+  /* ---------- Tombol musik (vinyl) ---------- */
   .music-toggle{
     position: fixed;
     bottom: 22px;
@@ -645,8 +650,6 @@
 <!-- ===== AUDIO LOKAL (autoplay + loop) ===== -->
 <audio id="bg-audio" src="audio.mp3" loop autoplay muted preload="auto"></audio>
 
-<!-- Satu canvas untuk semua efek ambient (bintang, hati, kelopak, confetti) —
-     jauh lebih ringan & tidak menumpuk elemen DOM dibanding banyak <span> terpisah -->
 <canvas id="fx-canvas" aria-hidden="true"></canvas>
 <div id="vignette" aria-hidden="true"></div>
 
@@ -674,8 +677,8 @@
       <div class="drip"></div>
     </div>
   </div>
-  <h1 class="display">Untuk <span class="nama" id="nama-slot">Sayang</span>,<br>yang selalu kutunggu</h1>
-  <p>Risa, cintaku, ayangku yang paling sabar. Kita sama-sama tinggal di Subang, cuma beda kabupaten — tapi karena belum pernah ketemu langsung, rasanya kayak LDR sungguhan. Surat kecil ini buat kamu, bidadari yang Tuhan pertemukan lewat cara paling nggak terduga: di tengah hutan Roblox, di antara ribuan pemain dari seluruh dunia.</p>
+  <h1 class="display">Untuk <span class="nama" id="nama-slot">Sayang</span>,<br>yang selalu menungguku</h1>
+  <p>Risa, cintaku, ayangku yang paling sabar. Kita sama-sama tinggal di Subang, cuma beda kabupaten — tapi karena belum pernah ketemu langsung, rasanya kayak LDR sungguhan. Surat kecil ini buat kamu, bidadari yang dengan setia menungguku, yang Tuhan pertemukan lewat cara paling nggak terduga: di tengah hutan Roblox, di antara ribuan pemain dari seluruh dunia.</p>
   <div class="scroll-hint">↓ gulir untuk membaca ↓</div>
 </section>
 
@@ -706,16 +709,16 @@
 
   <div class="letter" id="letter">
     <p>Risa, cintaku, ayangku yang paling sabar sekaligus paling lucu dan imut sedunia — kalau kesabaran punya wajah, aku yakin wajahnya adalah wajahmu.</p>
-    <p>Aku masih inget jelas, waktu itu aku lagi main Roblox sendirian, masuk ke map hutan yang sepi. Dari sekian banyak pemain di seluruh dunia, entah kenapa yang aku sapa pertama kali malah kamu. Kita ngobrol biasa aja awalnya, tapi makin lama makin nyambung. Aku percaya itu bukan kebetulan — itu caranya Tuhan mempertemukan aku sama bidadari yang selama ini aku tunggu, di tempat yang paling nggak kesangka.</p>
+    <p>Aku masih inget jelas, waktu itu aku lagi main Roblox sendirian, masuk ke map hutan yang sepi. Dari sekian banyak pemain di seluruh dunia, entah kenapa yang aku sapa pertama kali malah kamu. Kita ngobrol biasa aja awalnya, tapi makin lama makin nyambung. Aku percaya itu bukan kebetulan — itu caranya Tuhan mempertemukan aku dengan bidadari yang sejak itu setia menungguku, di tempat yang paling nggak kesangka.</p>
     <p>Lucu ya, kita berdua sama-sama tinggal di Subang, cuma beda kabupaten doang, tapi karena belum pernah ketemu langsung, rasanya jarak ini kayak LDR sungguhan. Padahal kalau dipikir-pikir, deket banget, tapi tetap aja aku kangen setengah mati.</p>
-    <p>Risa, kamu itu sosok yang sabar, penyayang, jujur, dan setia — empat sifat yang susah banget dicari sekarang. Setiap kali aku ngerasa berat sama jarak ini, aku selalu inget kesabaranmu, dan itu yang bikin aku makin yakin sama kamu.</p>
+    <p>Risa, kamu itu sosok yang sabar, penyayang, jujur, dan setia — empat sifat yang susah banget dicari sekarang. Setiap kali aku ngerasa berat sama jarak ini, aku selalu inget kesabaranmu menungguku, dan itu yang bikin aku makin yakin sama kamu.</p>
     <p>Oh iya, kalau nanti kamu dengar orang di Subang manggil aku "CEO Naga", itu cuma julukan becandaan dari teman-teman, bukan gelar resmi apa-apa. Tapi soal komitmenku ke kamu, itu serius — nggak ada bercandanya sama sekali.</p>
-    <p>Jadi, selamat Hari Valentine, cintaku. Terima kasih sudah sabar menunggu, terima kasih sudah jujur dan setia, walau jarak dan waktu belum berpihak ke kita. Sampai waktu itu tiba, aku janji akan datang dan meluk kamu langsung, ayang.</p>
-    <p class="signature">— dengan sepenuh hati, selalu menunggumu<br>Ren Sawerigading</p>
+    <p>Jadi, dalam suasana Valentine ini, cintaku. Terima kasih sudah sabar menungguku, terima kasih sudah jujur dan setia, walau jarak dan waktu belum berpihak ke kita. Sampai waktu itu tiba, aku janji akan datang dan meluk kamu langsung, ayang.</p>
+    <p class="signature">— dengan sepenuh hati, bersyukur karena kamu menungguku<br>Ren Sawerigading</p>
   </div>
 
   <button class="cta-btn" id="cta-btn">Buka Hatiku 💛</button>
-  <p class="final-msg" id="final-msg">Selamat Hari Valentine, Risa cintaku. Jarak Subang-beda-kabupaten ini cuma sementara, tapi rasa ini nggak. Tunggu aku, ya, ayang — sampai waktunya kita bisa peluk langsung. 🕯️💕</p>
+  <p class="final-msg" id="final-msg">Dalam suasana Valentine, Risa cintaku. Jarak Subang-beda-kabupaten ini cuma sementara, tapi rasa ini nggak. Terima kasih sudah menungguku, ayang — sampai waktunya kita bisa peluk langsung. 🕯️💕</p>
 </section>
 
 <div class="music-toggle" id="music-toggle" role="button" tabindex="0" aria-label="Nyalakan atau matikan suara musik" title="Suara musik">
@@ -740,9 +743,6 @@
 
   /* =====================================================
      AUDIO LOKAL — audio.mp3, autoplay + loop
-     Perbaikan bug: menangani event 'error' (file belum ada / gagal
-     dimuat) supaya tombol musik tidak "menggantung" dalam status
-     yang salah, dan tidak memicu percobaan play() berulang tanpa henti.
      ===================================================== */
   const audio = document.getElementById('bg-audio');
   const musicToggle = document.getElementById('music-toggle');
@@ -765,7 +765,6 @@
     updateMusicUI();
   }, { once:true });
 
-  // Coba autoplay dari awal (muted, sesuai kebijakan browser)
   audio.play().catch(() => { /* akan dicoba lagi saat interaksi pertama */ });
 
   function enterSite(){
@@ -776,7 +775,7 @@
       audio.play().catch(() => { musicHint.classList.add('show'); });
     }
     updateMusicUI();
-    fx.celebrate(); // semburan confetti selamat datang
+    fx.celebrate();
   }
 
   gateBtn.addEventListener('click', enterSite, { once:true });
@@ -803,17 +802,7 @@
   updateMusicUI();
 
   /* =====================================================
-     SISTEM PARTIKEL CANVAS — bintang kelap-kelip, hati melayang,
-     kelopak bunga jatuh, sparkle kursor, dan confetti/heart-burst.
-     Semua digambar dalam SATU render loop dengan pool partikel
-     berkapasitas tetap (dibatasi/di-cap), sehingga:
-       - tidak menumpuk elemen DOM (beda dari versi sebelumnya yang
-         membuat banyak <span> untuk tiap hati/bintang/efek burst),
-       - loop otomatis berhenti saat tab disembunyikan (visibilitychange)
-         supaya tidak boros CPU/baterai di background — ini memperbaiki
-         potensi "leak" berupa animasi yang tetap jalan sia-sia,
-       - hanya SATU requestAnimationFrame yang pernah berjalan (dijaga
-         dengan flag rafId, tidak ada loop duplikat saat resize).
+     SISTEM PARTIKEL CANVAS
      ===================================================== */
   const fx = (function(){
     const canvas = document.getElementById('fx-canvas');
@@ -823,7 +812,7 @@
     let rafId = null;
     let running = false;
 
-    const MAX_BURST = 140; // batas tegas jumlah partikel burst, mencegah pertumbuhan tak terbatas
+    const MAX_BURST = 140;
     const stars = [];
     const hearts = [];
     const petals = [];
@@ -891,7 +880,7 @@
 
     function spawnBurst(cx, cy, count, glyphs){
       for (let i = 0; i < count; i++) {
-        if (bursts.length >= MAX_BURST) bursts.shift(); // buang partikel tertua, jaga batas memori
+        if (bursts.length >= MAX_BURST) bursts.shift();
         const angle = rand(0, Math.PI * 2);
         const speed = rand(60, 220);
         bursts.push({
@@ -910,12 +899,11 @@
     function frame(ts){
       if (!running) return;
       if (!last) last = ts;
-      const dt = Math.min((ts - last) / 1000, 0.05); // clamp supaya lompatan tab tidak "meledak"
+      const dt = Math.min((ts - last) / 1000, 0.05);
       last = ts;
 
       ctx.clearRect(0, 0, W, H);
 
-      // bintang kelap-kelip
       for (const s of stars) {
         s.phase += s.speed;
         const a = 0.25 + Math.abs(Math.sin(s.phase)) * 0.75;
@@ -925,7 +913,6 @@
         ctx.fill();
       }
 
-      // hati melayang naik, recycle ke bawah saat lewat atas layar
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'center';
       for (const h of hearts) {
@@ -938,7 +925,6 @@
         if (h.y < -30) Object.assign(h, makeHeart(true));
       }
 
-      // kelopak jatuh dari atas — hujan kelopak khas Valentine, terus-menerus
       for (const p of petals) {
         p.y += p.speed * dt;
         p.wobble += dt * 1.4;
@@ -957,15 +943,14 @@
       }
       ctx.globalAlpha = 1;
 
-      // confetti/heart-burst sesaat (dibatasi MAX_BURST, dibuang otomatis saat "mati")
       if (bursts.length) {
         const next = [];
         for (const b of bursts) {
           b.life += dt;
-          if (b.life >= b.maxLife) continue; // otomatis dibersihkan, tidak pernah menumpuk
+          if (b.life >= b.maxLife) continue;
           b.x += b.vx * dt;
           b.y += b.vy * dt;
-          b.vy += 220 * dt; // gravitasi ringan
+          b.vy += 220 * dt;
           const t = b.life / b.maxLife;
           ctx.globalAlpha = 1 - t;
           ctx.font = b.size + 'px sans-serif';
@@ -992,7 +977,6 @@
       rafId = null;
     }
 
-    // Hemat resource: hentikan loop saat tab tidak terlihat, lanjut saat kembali.
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) stop(); else if (!reduceMotion) start();
     });
@@ -1007,7 +991,6 @@
     populate();
 
     if (reduceMotion) {
-      // Gambar satu frame statis saja, hormati preferensi pengguna, tanpa loop.
       running = true; frame(performance.now()); running = false;
     } else {
       start();
@@ -1022,11 +1005,11 @@
     };
   })();
 
-  /* ---------- Sparkle mengikuti kursor (desktop, memakai canvas juga) ---------- */
+  /* ---------- Sparkle mengikuti kursor (desktop) ---------- */
   if (!reduceMotion && !isMobile) {
     let lastTrail = 0;
     document.addEventListener('mousemove', (e) => {
-      if (document.body.classList.contains('locked')) return; // jangan boros sebelum gerbang dibuka
+      if (document.body.classList.contains('locked')) return;
       const now = performance.now();
       if (now - lastTrail < 90) return;
       lastTrail = now;
@@ -1034,20 +1017,20 @@
     }, { passive:true });
   }
 
-  /* ---------- Reveal on scroll (unobserve tiap section setelah tampil) ---------- */
+  /* ---------- Reveal on scroll ---------- */
   const revealSections = document.querySelectorAll('section:not(.hero)');
   const ioReveal = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add('in-view');
-        ioReveal.unobserve(entry.target); // sudah tidak perlu diawasi lagi, hemat kerja observer
+        ioReveal.unobserve(entry.target);
       }
     });
   }, { threshold: 0.2 });
   revealSections.forEach(sec => ioReveal.observe(sec));
 
   /* ---------- Typewriter "Tentang Menunggu" ---------- */
-  const waitingText = "Risa, cintaku, katanya LDR itu ujian kesabaran paling nyata — walau kita sama-sama di Subang, cuma beda kabupaten, jarak itu tetap terasa jauh kalau belum pernah ketemu langsung. Kita kenal dari dunia maya, di tengah hutan Roblox yang isinya pemain dari seluruh dunia, tapi entah kenapa yang aku sapa malah kamu. Aku percaya itu bukan kebetulan, itu caranya Tuhan mempertemukan aku sama bidadari-Nya. Sabar, penyayang, jujur, dan setia — begitu aku mengenalmu, ayang, walau yang bisa aku kasih baru sebatas kata dari jauh. Aku sadar, bukan aku yang hebat karena bertahan dari jarak ini. Kamu yang hebat, sayangku, karena tetap memilih menunggu, dengan hati yang tenang.";
+  const waitingText = "Risa, cintaku, katanya LDR itu ujian kesabaran paling nyata — walau kita sama-sama di Subang, cuma beda kabupaten, jarak itu tetap terasa jauh kalau belum pernah ketemu langsung. Kita kenal dari dunia maya, di tengah hutan Roblox yang isinya pemain dari seluruh dunia, tapi entah kenapa yang aku sapa malah kamu. Aku percaya itu bukan kebetulan, itu caranya Tuhan mempertemukan aku sama bidadari-Nya. Sabar, penyayang, jujur, dan setia — begitu aku mengenalmu, ayang, walau yang bisa aku kasih baru sebatas kata dari jauh. Aku sadar, bukan aku yang hebat karena bertahan dari jarak ini. Kamu yang hebat, sayangku, karena tetap memilih menungguku, dengan hati yang tenang.";
   const typeTarget = document.getElementById('type-target');
   let typed = false;
   let typeTimer = null;
@@ -1089,9 +1072,9 @@
     { icon: '🌲', text: 'Risa cintaku, siapa sangka dari ribuan pemain Roblox di seluruh dunia, di tengah map hutan yang sepi, aku malah nyapa dan ketemu kamu. Itu bukan kebetulan, ayang — itu caranya Tuhan mempertemukan aku sama bidadari-Nya.' },
     { icon: '🐉', text: 'Di Subang, temen-temen suka becanda manggil aku "CEO Naga" — jangan baper ya sayangku, itu cuma julukan lucu-lucuan. Tapi soal kamu, aku serius: aku cuma pengen jadi orang yang akhirnya bisa datang dan meluk kamu langsung.' },
     { icon: '🗺️', text: 'Lucu ya, Risa imutku, kita samaan tinggal di Subang, cuma beda kabupaten doang — tapi karena belum pernah ketemu langsung, rasanya kayak LDR beneran.' },
-    { icon: '🌙', text: 'Jarak boleh misahin kita sekarang, cintaku, tapi nggak pernah bisa misahin rindu yang aku kirim tiap malam buat ayang paling sabar sedunia.' },
+    { icon: '🌙', text: 'Jarak boleh misahin kita sekarang, cintaku, tapi nggak pernah bisa misahin rindu yang aku kirim tiap malam buat ayang yang paling sabar menungguku sedunia.' },
     { icon: '💎', text: 'Sabar, penyayang, jujur, dan setia — empat kata itu selalu aku inget kalau mikirin kamu, sayangku. Susah cari orang kayak kamu, Risa.' },
-    { icon: '💫', text: 'Kalau kesabaran bisa dihitung seperti bintang, langitmu pasti sudah penuh sesak, imutku — menunggu waktu yang tepat buat kita akhirnya bisa peluk langsung.' }
+    { icon: '💫', text: 'Kalau kesabaranmu menungguku bisa dihitung seperti bintang, langitmu pasti sudah penuh sesak, imutku — sampai waktu yang tepat buat kita akhirnya bisa peluk langsung.' }
   ];
   const grid = document.getElementById('cards-grid');
   const cardFrag = document.createDocumentFragment();
@@ -1142,7 +1125,7 @@
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEnvelope(); }
   });
 
-  /* ---------- Tombol "Buka Hatiku" -> efek penuh ---------- */
+  /* ---------- Tombol "Buka Hatiku" ---------- */
   const ctaBtn = document.getElementById('cta-btn');
   const finalMsg = document.getElementById('final-msg');
   let burstDone = false;
