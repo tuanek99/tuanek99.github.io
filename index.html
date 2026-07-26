@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Untuk Kamu, Yang Selalu Kutunggu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400;1,600&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  /* ============ EDIT DI SINI ============ */
+  :root{
+    --nama-pacar: "Yunika Arisa";
+  }
+  /* ======================================= */
+
+  :root{
+    --plum: #201021;
+    --wine: #4a2545;
+    --wine-light: #6b3760;
+    --rose: #e8a0a8;
+    --blush: #f6cfd3;
+    --gold: #e3b872;
+    --gold-soft: #f0d19e;
+    --cream: #fdf6ee;
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  html{ scroll-behavior:smooth; }
+
+  body{
+    background: linear-gradient(180deg, var(--plum) 0%, var(--wine) 50%, var(--plum) 100%);
+    color: var(--cream);
+    font-family:'Poppins', sans-serif;
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  .display{ font-family:'Cormorant Garamond', serif; }
+
+  /* ---------- Ambient floating hearts ---------- */
+  #ambient-hearts{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:1;
+    overflow:hidden;
+  }
+  .amb-heart{
+    position:absolute;
+    bottom:-40px;
+    font-size:1.2rem;
+    color: var(--rose);
+    opacity:.35;
+    animation: floatUp linear infinite;
+    will-change: transform, opacity;
+  }
+  @keyframes floatUp{
+    0%{ transform:translateY(0) translateX(0) rotate(0deg); opacity:0; }
+    10%{ opacity:.4; }
+    90%{ opacity:.3; }
+    100%{ transform:translateY(-110vh) translateX(var(--drift,20px)) rotate(360deg); opacity:0; }
+  }
+
+  section{
+    position:relative;
+    z-index:2;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding: 6vh 6vw;
+  }
+
+  /* ---------- HERO / Lilin ---------- */
+  .hero{ gap:1.6rem; }
+
+  .candle-wrap{
+    width:60px;
+    height:150px;
+    position:relative;
+    margin-bottom: 1rem;
+  }
+  .flame{
+    width:16px;
+    height:26px;
+    background: radial-gradient(circle at 50% 70%, #fff6d6 0%, var(--gold) 45%, #d9722f 80%, transparent 100%);
+    border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+    position:absolute;
+    left:50%;
+    top:0;
+    transform:translateX(-50%);
+    transform-origin: bottom center;
+    animation: flicker 2.4s ease-in-out infinite;
+    box-shadow: 0 0 20px 6px rgba(227,184,114,.5);
+  }
+  @keyframes flicker{
+    0%,100%{ transform:translateX(-50%) rotate(-2deg) scaleY(1); }
+    25%{ transform:translateX(-50%) rotate(2deg) scaleY(1.05); }
+    50%{ transform:translateX(-50%) rotate(-1deg) scaleY(0.96); }
+    75%{ transform:translateX(-50%) rotate(3deg) scaleY(1.03); }
+  }
+  .wick{
+    width:2px; height:10px; background:#3a2a1a;
+    position:absolute; left:50%; top:22px; transform:translateX(-50%);
+  }
+  .wax{
+    width:26px;
+    height:120px;
+    background: linear-gradient(180deg, var(--gold-soft), var(--gold) 60%, #b8843f);
+    position:absolute;
+    left:50%; top:30px; transform:translateX(-50%);
+    border-radius: 4px 4px 2px 2px;
+  }
+  .wax::before{
+    content:"";
+    position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+    width:34px; height:12px;
+    background: inherit;
+    border-radius:50%;
+  }
+  .drip{
+    position:absolute;
+    width:5px; background: var(--gold-soft);
+    border-radius: 0 0 4px 4px;
+    top:20px;
+    animation: melt 6s ease-in infinite;
+    opacity:0;
+  }
+  .drip:nth-child(1){ left:6px; animation-delay:.5s; }
+  .drip:nth-child(2){ left:16px; animation-delay:2.8s; }
+  @keyframes melt{
+    0%{ height:0; opacity:0; }
+    10%{ opacity:.8; }
+    80%{ height:38px; opacity:.6; }
+    100%{ height:44px; opacity:0; }
+  }
+
+  .hero h1{
+    font-size: clamp(2.2rem, 6vw, 4rem);
+    font-style: italic;
+    font-weight:600;
+    color: var(--cream);
+    text-shadow: 0 0 30px rgba(232,160,168,.3);
+  }
+  .hero h1 .nama{ color: var(--gold-soft); }
+
+  .hero p{
+    max-width: 520px;
+    font-weight:300;
+    font-size: 1.05rem;
+    line-height:1.8;
+    color: var(--blush);
+    letter-spacing:.3px;
+  }
+
+  .scroll-hint{
+    margin-top: 2.5rem;
+    font-size:.8rem;
+    letter-spacing: 2px;
+    text-transform:uppercase;
+    color: var(--rose);
+    opacity:.7;
+    animation: bob 2s ease-in-out infinite;
+  }
+  @keyframes bob{
+    0%,100%{ transform:translateY(0); }
+    50%{ transform:translateY(8px); }
+  }
+
+  /* ---------- Section umum ---------- */
+  .section-title{
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-style:italic;
+    color: var(--gold-soft);
+    margin-bottom: 2.2rem;
+  }
+
+  /* ---------- Tentang Menunggu (typewriter) ---------- */
+  .waiting p{
+    max-width: 640px;
+    font-family:'Cormorant Garamond', serif;
+    font-size: clamp(1.2rem, 2.6vw, 1.6rem);
+    line-height:2;
+    color: var(--cream);
+    min-height: 9em;
+    text-align:left;
+  }
+  .type-cursor{
+    display:inline-block;
+    width:2px;
+    background: var(--gold);
+    margin-left:2px;
+    animation: blink 0.9s step-end infinite;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  /* ---------- Kartu Gombal ---------- */
+  .cards-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1.4rem;
+    max-width: 900px;
+    width:100%;
+    perspective: 1200px;
+  }
+  .flip-card{
+    height: 190px;
+    cursor:pointer;
+  }
+  .flip-inner{
+    position:relative;
+    width:100%; height:100%;
+    transition: transform .7s cubic-bezier(.4,.2,.2,1);
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .flip-card.flipped .flip-inner{ transform: rotateY(180deg); }
+  .flip-card:focus-visible{ outline: 2px solid var(--gold); outline-offset:4px; }
+
+  .flip-front, .flip-back{
+    position:absolute; inset:0;
+    backface-visibility: hidden;
+    border-radius: 14px;
+    display:flex; align-items:center; justify-content:center;
+    padding: 1.2rem;
+    text-align:center;
+  }
+  .flip-front{
+    background: linear-gradient(150deg, var(--wine-light), var(--wine));
+    border: 1px solid rgba(227,184,114,.3);
+  }
+  .flip-front span{
+    font-family:'Cormorant Garamond', serif;
+    font-size:1.1rem;
+    color: var(--rose);
+  }
+  .flip-front .icon{
+    font-size:1.8rem;
+    display:block;
+    margin-bottom:.5rem;
+  }
+  .flip-back{
+    background: linear-gradient(150deg, var(--gold-soft), var(--gold));
+    color: var(--plum);
+    transform: rotateY(180deg);
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    font-size:1.05rem;
+    line-height:1.5;
+    font-weight:600;
+  }
+
+  .hint-tap{
+    margin-top:1.6rem;
+    font-size:.8rem;
+    color: var(--rose);
+    opacity:.6;
+  }
+
+  /* ---------- Amplop ---------- */
+  .envelope-section .section-title{ margin-bottom: .6rem; }
+  .envelope-section > p.lead{
+    color: var(--blush);
+    font-weight:300;
+    margin-bottom: 2.2rem;
+  }
+
+  .envelope{
+    width: min(340px, 80vw);
+    height: 210px;
+    position:relative;
+    cursor:pointer;
+    margin-bottom: 2rem;
+  }
+  .env-body{
+    position:absolute; inset:0;
+    background: linear-gradient(160deg, var(--cream), var(--blush));
+    border-radius: 8px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.4);
+    overflow:hidden;
+  }
+  .env-body::before, .env-body::after{
+    content:"";
+    position:absolute;
+    width:0; height:0;
+    border-style:solid;
+  }
+  .env-body::before{
+    bottom:0; left:0;
+    border-width: 0 0 105px 170px;
+    border-color: transparent transparent rgba(74,37,69,.12) transparent;
+  }
+  .env-body::after{
+    bottom:0; right:0;
+    border-width: 0 170px 105px 0;
+    border-color: transparent transparent rgba(74,37,69,.12) transparent;
+  }
+  .env-flap{
+    position:absolute;
+    top:0; left:0; width:100%; height:105px;
+    background: linear-gradient(160deg, var(--rose), var(--wine-light));
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    transform-origin: top center;
+    transition: transform .8s cubic-bezier(.6,-0.2,.3,1.3);
+    z-index:3;
+  }
+  .envelope.open .env-flap{ transform: rotateX(180deg); }
+
+  .env-seal{
+    position:absolute;
+    top: 66px; left:50%; transform:translate(-50%,-50%);
+    width:44px; height:44px;
+    background: radial-gradient(circle at 35% 30%, #f0d19e, var(--gold) 70%);
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.1rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,.35);
+    z-index:4;
+    transition: opacity .4s ease;
+  }
+  .envelope.open .env-seal{ opacity:0; pointer-events:none; }
+
+  .env-tap-label{
+    position:absolute;
+    bottom: 14px; left:50%; transform:translateX(-50%);
+    font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase;
+    color: var(--wine);
+    opacity:.6;
+    z-index:2;
+    transition: opacity .3s ease;
+  }
+  .envelope.open .env-tap-label{ opacity:0; }
+
+  .letter{
+    max-width: 560px;
+    background: var(--cream);
+    color: var(--wine);
+    border-radius: 10px;
+    padding: 2.4rem 2rem;
+    box-shadow: 0 25px 60px rgba(0,0,0,.45);
+    opacity:0;
+    transform: translateY(30px) scale(.96);
+    transition: opacity .7s ease, transform .7s ease;
+    font-family:'Cormorant Garamond', serif;
+  }
+  .letter.show{ opacity:1; transform: translateY(0) scale(1); }
+  .letter p{
+    font-size: clamp(1.1rem, 2.4vw, 1.35rem);
+    line-height:1.9;
+    text-align:left;
+    margin-bottom:1rem;
+  }
+  .letter .signature{
+    text-align:right;
+    font-style:italic;
+    color: var(--rose-dark, #a3506a);
+    margin-top: 1.4rem;
+  }
+
+  .cta-btn{
+    margin-top: 1.6rem;
+    background: linear-gradient(120deg, var(--gold), var(--rose));
+    color: var(--plum);
+    border:none;
+    padding: .9rem 2.2rem;
+    border-radius: 999px;
+    font-family:'Poppins', sans-serif;
+    font-weight:600;
+    font-size: 1rem;
+    cursor:pointer;
+    box-shadow: 0 10px 24px rgba(227,184,114,.35);
+    transition: transform .25s ease, box-shadow .25s ease;
+  }
+  .cta-btn:hover{ transform: translateY(-3px); box-shadow: 0 16px 32px rgba(227,184,114,.45); }
+  .cta-btn:active{ transform: translateY(0); }
+  .cta-btn:focus-visible{ outline:2px solid var(--wine); outline-offset:3px; }
+
+  .final-msg{
+    margin-top: 1.6rem;
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    font-size:1.3rem;
+    color: var(--gold-soft);
+    opacity:0;
+    transition: opacity .8s ease;
+  }
+  .final-msg.show{ opacity:1; }
+
+  /* ---------- Heart burst (efek penuh) ---------- */
+  #burst-layer{
+    position:fixed; inset:0;
+    pointer-events:none;
+    z-index:50;
+  }
+  .burst-heart{
+    position:absolute;
+    bottom: -5vh;
+    font-size: 1.4rem;
+    color: var(--gold-soft);
+    animation: burstUp 2.6s ease-out forwards;
+    will-change: transform, opacity;
+  }
+  @keyframes burstUp{
+    0%{ transform: translate(0,0) scale(.6) rotate(0deg); opacity:1; }
+    100%{ transform: translate(var(--bx,0), -100vh) scale(1.1) rotate(var(--br,180deg)); opacity:0; }
+  }
+
+  /* ---------- Tombol musik ---------- */
+  .music-toggle{
+    position: fixed;
+    bottom: 22px;
+    right: 22px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--rose));
+    color: var(--plum);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: 1.3rem;
+    cursor:pointer;
+    z-index: 100;
+    box-shadow: 0 10px 24px rgba(227,184,114,.4);
+    transition: transform .25s ease, opacity .3s ease;
+  }
+  .music-toggle::after{
+    content:"";
+    position:absolute;
+    inset:-6px;
+    border-radius:50%;
+    background: radial-gradient(circle, rgba(227,184,114,.5), transparent 70%);
+    z-index:-1;
+    animation: pulseSoft 3s ease-in-out infinite;
+    will-change: opacity, transform;
+  }
+  .music-toggle:hover{ transform: scale(1.08); }
+  .music-toggle.muted{ opacity:.55; }
+  .music-toggle.muted::after{ animation:none; opacity:0; }
+  .music-toggle:focus-visible{ outline:2px solid var(--cream); outline-offset:3px; }
+  @keyframes pulseSoft{
+    0%,100%{ opacity:.5; transform:scale(1); }
+    50%{ opacity:1; transform:scale(1.15); }
+  }
+
+  footer{
+    position:relative; z-index:2;
+    text-align:center;
+    padding: 3rem 1rem 2rem;
+    font-size:.75rem;
+    color: var(--rose);
+    opacity:.5;
+    letter-spacing:1px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+
+  @media (max-width: 480px){
+    .flip-card{ height:170px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="ambient-hearts" aria-hidden="true"></div>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="candle-wrap" aria-hidden="true">
+    <div class="flame"></div>
+    <div class="wick"></div>
+    <div class="wax">
+      <div class="drip"></div>
+      <div class="drip"></div>
+    </div>
+  </div>
+  <h1 class="display">Untuk <span class="nama" id="nama-slot">Sayang</span>,<br>yang selalu kutunggu</h1>
+  <p>Aku tahu jarak Subang ke tempatmu nggak pernah gampang. Kita bahkan belum pernah bertemu langsung — tapi kamu tetap sabar, dan surat kecil ini, buat kamu yang nggak pernah menyerah menunggu.</p>
+  <div class="scroll-hint">↓ gulir untuk membaca ↓</div>
+</section>
+
+<!-- ===== TENTANG MENUNGGU ===== -->
+<section class="waiting">
+  <h2 class="section-title display">Tentang Menunggu</h2>
+  <p id="type-target"></p>
+</section>
+
+<!-- ===== KARTU GOMBAL ===== -->
+<section class="gombal">
+  <h2 class="section-title display">Kalau boleh gombal sedikit...</h2>
+  <div class="cards-grid" id="cards-grid"></div>
+  <p class="hint-tap">ketuk kartu untuk membukanya</p>
+</section>
+
+<!-- ===== AMPLOP / SURAT ===== -->
+<section class="envelope-section">
+  <h2 class="section-title display">Ada satu hal lagi...</h2>
+  <p class="lead">Sebuah surat kecil, khusus untukmu.</p>
+
+  <div class="envelope" id="envelope" role="button" tabindex="0" aria-label="Buka amplop surat">
+    <div class="env-flap"></div>
+    <div class="env-seal">💌</div>
+    <div class="env-body"></div>
+    <div class="env-tap-label">ketuk untuk membuka</div>
+  </div>
+
+  <div class="letter" id="letter">
+    <p>Kalau kesabaran punya wajah, aku yakin wajahnya adalah wajahmu, Yunika — yang tetap tenang menunggu, walau kita belum pernah bertemu langsung, dan yang bisa aku kasih baru sebatas kata dari jauh.</p>
+    <p>Aku tahu LDR itu berat. Aku juga tahu kamu pasti sering nanya, kapan kita bisa ketemu. Jujur, aku juga pengen banget. Tapi biar aku jujur juga — ini bukan soal aku nggak mau, cuma memang belum waktunya. Dan aku janji, waktu itu akan datang.</p>
+    <p>Oh iya, kalau nanti kamu dengar orang di Subang manggil aku "CEO Naga", itu cuma julukan becandaan dari teman-teman, bukan gelar resmi apa-apa. Tapi soal komitmenku ke kamu, itu serius — nggak ada bercandanya sama sekali.</p>
+    <p>Jadi, selamat Hari Valentine. Terima kasih sudah sabar menunggu, dan terima kasih sudah percaya, walau jarak dan waktu belum berpihak ke kita. Sampai waktu itu tiba.</p>
+    <p class="signature">— dengan sepenuh hati, selalu menunggumu<br>Ren Saweigading</p>
+  </div>
+
+  <button class="cta-btn" id="cta-btn">Buka Hatiku 💛</button>
+  <p class="final-msg" id="final-msg">Selamat Hari Valentine, Yunika. Jarak ini cuma sementara, tapi rasa ini nggak. Tunggu aku, ya — sampai waktunya tiba. 🕯️💕</p>
+</section>
+
+<div id="burst-layer" aria-hidden="true"></div>
+
+<audio id="bg-music" loop preload="auto"></audio>
+<div class="music-toggle" id="music-toggle" role="button" tabindex="0" aria-label="Nyalakan atau matikan musik latar" title="Musik latar">
+  <span id="music-icon">♪</span>
+</div>
+
+<footer>dibuat dengan sabar, dan sedikit gombal ✦</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ============ EDIT SUMBER MUSIK DI SINI ============
+     - File lokal: taruh file mp3 di folder yang sama dengan HTML ini,
+       lalu isi nama filenya, mis: 'audio.mp3'
+     - URL online: isi dengan link LANGSUNG ke file .mp3 (bukan link
+       youtube.com/watch, karena YouTube tidak menyediakan file audio
+       langsung yang bisa diputar lewat tag <audio>)
+  ===================================================== */
+  const AUDIO_SRC = 'audio.mp3';
+
+  const audio = document.getElementById('bg-music');
+  const musicToggle = document.getElementById('music-toggle');
+  const musicIcon = document.getElementById('music-icon');
+  audio.src = AUDIO_SRC;
+  audio.volume = 0.6;
+
+  function updateMusicIcon(){
+    musicIcon.textContent = audio.paused ? '♪' : '⏸';
+    musicToggle.classList.toggle('muted', audio.paused);
+  }
+
+  let userPaused = false;
+  let audioBroken = false;
+  let interactionBound = false;
+
+  function bindInteractionFallback(){
+    if (interactionBound || audioBroken) return;
+    interactionBound = true;
+    const startOnInteract = () => {
+      interactionBound = false;
+      if (!userPaused && !audioBroken) attemptPlay();
+    };
+    document.addEventListener('click', startOnInteract, { once:true });
+    document.addEventListener('touchstart', startOnInteract, { once:true });
+    document.addEventListener('keydown', startOnInteract, { once:true });
+  }
+
+  function attemptPlay(){
+    if (audioBroken) return;
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.then(updateMusicIcon).catch(() => {
+        /* Autoplay diblokir browser: tunggu SATU interaksi pengguna
+           berikutnya, jangan tumpuk listener baru tiap kali gagal */
+        updateMusicIcon();
+        bindInteractionFallback();
+      });
+    }
+  }
+
+  audio.addEventListener('error', () => {
+    audioBroken = true;
+    console.warn('File musik tidak ditemukan atau gagal dimuat:', AUDIO_SRC);
+    musicToggle.style.display = 'none';
+  });
+
+  attemptPlay();
+
+  musicToggle.addEventListener('click', () => {
+    if (audioBroken) return;
+    if (audio.paused) {
+      userPaused = false;
+      attemptPlay();
+    } else {
+      userPaused = true;
+      audio.pause();
+      updateMusicIcon();
+    }
+  });
+  musicToggle.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); musicToggle.click(); }
+  });
+
+  /* Isi nama pacar dari CSS variable */
+  const nama = getComputedStyle(document.documentElement).getPropertyValue('--nama-pacar').trim().replace(/^"|"$/g,'');
+  const namaSlot = document.getElementById('nama-slot');
+  if (nama) namaSlot.textContent = nama;
+
+  /* ---------- Ambient floating hearts ---------- */
+  const isMobile = window.matchMedia('(max-width: 700px)').matches;
+  const ambientLayer = document.getElementById('ambient-hearts');
+  const AMBIENT_COUNT = reduceMotion ? 0 : (isMobile ? 6 : 14);
+  const ambFragment = document.createDocumentFragment();
+  for (let i = 0; i < AMBIENT_COUNT; i++) {
+    const h = document.createElement('span');
+    h.className = 'amb-heart';
+    h.textContent = Math.random() > .5 ? '♥' : '❤';
+    h.style.left = Math.random() * 100 + 'vw';
+    h.style.setProperty('--drift', (Math.random() * 80 - 40) + 'px');
+    h.style.fontSize = (0.8 + Math.random() * 1.2) + 'rem';
+    const duration = 10 + Math.random() * 10;
+    h.style.animationDuration = duration + 's';
+    h.style.animationDelay = (Math.random() * duration) + 's';
+    ambFragment.appendChild(h);
+  }
+  ambientLayer.appendChild(ambFragment);
+
+  /* ---------- Typewriter "Tentang Menunggu" ---------- */
+  const waitingText = "Katanya, LDR itu ujian kesabaran paling nyata. Kita bahkan belum pernah bertemu langsung, tapi kamu tetap di sana — sabar, percaya, walau yang bisa aku kasih baru sebatas kata dari jauh. Aku sadar, bukan aku yang hebat karena bertahan dari jarak ini. Kamu yang hebat, karena tetap memilih menunggu.";
+  const typeTarget = document.getElementById('type-target');
+  let typed = false;
+
+  function typeWriter(el, text, speed) {
+    let i = 0;
+    const cursor = document.createElement('span');
+    cursor.className = 'type-cursor';
+    cursor.innerHTML = '&nbsp;';
+    function step() {
+      if (i <= text.length) {
+        el.textContent = text.slice(0, i);
+        el.appendChild(cursor);
+        i++;
+        setTimeout(step, speed);
+      }
+    }
+    step();
+  }
+
+  const waitingSection = document.querySelector('.waiting');
+  const io1 = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && !typed) {
+        typed = true;
+        if (reduceMotion) {
+          typeTarget.textContent = waitingText;
+        } else {
+          typeWriter(typeTarget, waitingText, 28);
+        }
+        io1.disconnect();
+      }
+    });
+  }, { threshold: 0.4 });
+  io1.observe(waitingSection);
+
+  /* ---------- Kartu gombal ---------- */
+  const gombalLines = [
+    { icon: '🕯️', text: 'Kamu bukan orang yang gampang menyerah. Walau kita LDR dan belum pernah ketemu langsung, kamu tetap di sini, sabar menunggu aku.' },
+    { icon: '🐉', text: 'Di Subang, temen-temen suka becanda manggil aku "CEO Naga" — jangan baper, itu cuma julukan lucu-lucuan. Tapi soal kamu, aku serius: aku cuma pengen jadi orang yang akhirnya bisa datang dan meluk kamu langsung.' },
+    { icon: '🌙', text: 'Jarak boleh misahin kita sekarang, tapi nggak pernah bisa misahin rindu yang aku kirim tiap malam.' },
+    { icon: '✉️', text: 'Aku baru sadar, selama ini bukan aku yang hebat karena bertahan. Kamu yang hebat, karena tetap percaya, bahkan sebelum kita sempat bertemu langsung.' },
+    { icon: '🌷', text: 'Kamu kayak bunga yang tetap sabar mekar, walau yang menyiram masih di kota yang jauh.' },
+    { icon: '💫', text: 'Kalau kesabaran bisa dihitung seperti bintang, langitmu pasti sudah penuh sesak — menunggu waktu yang tepat buat kita akhirnya bertemu.' }
+  ];
+  const grid = document.getElementById('cards-grid');
+  gombalLines.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = 'flip-card';
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-label', 'Buka gombalan ' + (idx + 1));
+    card.innerHTML = `
+      <div class="flip-inner">
+        <div class="flip-front"><span><span class="icon">${item.icon}</span>Ketuk aku</span></div>
+        <div class="flip-back">${item.text}</div>
+      </div>`;
+    function toggle(){ card.classList.toggle('flipped'); }
+    card.addEventListener('click', toggle);
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    });
+    grid.appendChild(card);
+  });
+
+  /* ---------- Amplop ---------- */
+  const envelope = document.getElementById('envelope');
+  const letter = document.getElementById('letter');
+  let opened = false;
+
+  function openEnvelope() {
+    if (opened) return;
+    opened = true;
+    envelope.classList.add('open');
+    setTimeout(() => { letter.classList.add('show'); }, 500);
+  }
+  envelope.addEventListener('click', openEnvelope);
+  envelope.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEnvelope(); }
+  });
+
+  /* ---------- Tombol "Buka Hatiku" -> efek penuh ---------- */
+  const ctaBtn = document.getElementById('cta-btn');
+  const finalMsg = document.getElementById('final-msg');
+  const burstLayer = document.getElementById('burst-layer');
+  let burstDone = false;
+
+  function heartBurst() {
+    const count = reduceMotion ? 0 : (isMobile ? 24 : 60);
+    const fragment = document.createDocumentFragment();
+    const created = [];
+    for (let i = 0; i < count; i++) {
+      const h = document.createElement('span');
+      h.className = 'burst-heart';
+      h.textContent = ['♥','❤','💛','💕'][Math.floor(Math.random() * 4)];
+      h.style.left = (40 + Math.random() * 20) + 'vw';
+      h.style.setProperty('--bx', (Math.random() * 200 - 100) + 'px');
+      h.style.setProperty('--br', (Math.random() * 360) + 'deg');
+      h.style.fontSize = (1 + Math.random() * 1.6) + 'rem';
+      h.style.animationDelay = (Math.random() * 0.6) + 's';
+      fragment.appendChild(h);
+      created.push(h);
+    }
+    burstLayer.appendChild(fragment);
+    setTimeout(() => created.forEach(h => h.remove()), 3600);
+  }
+
+  ctaBtn.addEventListener('click', () => {
+    heartBurst();
+    finalMsg.classList.add('show');
+    ctaBtn.disabled = true;
+    ctaBtn.style.opacity = '.6';
+    ctaBtn.style.cursor = 'default';
+    if (!burstDone) {
+      burstDone = true;
+      ctaBtn.textContent = 'Selamanya 💛';
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
