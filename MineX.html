@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MineX - Advanced Miner</title>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tone.js for Sound Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        rarity: {
+                            common: '#9ca3af',   // gray-400
+                            uncommon: '#4ade80', // green-400
+                            rare: '#60a5fa',     // blue-400
+                            epic: '#c084fc',     // purple-400
+                            legend: '#fb923c',   // orange-400
+                            mythic: '#f87171',   // red-400
+                            exotic: '#2dd4bf'    // teal-400
+                        }
+                    },
+                    animation: {
+                        'shake': 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both',
+                        'float-up': 'floatUp 1s ease-out forwards',
+                        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        shake: {
+                            '10%, 90%': { transform: 'translate3d(-2px, 2px, 0)' },
+                            '20%, 80%': { transform: 'translate3d(4px, -2px, 0)' },
+                            '30%, 50%, 70%': { transform: 'translate3d(-8px, 4px, 0)' },
+                            '40%, 60%': { transform: 'translate3d(8px, -4px, 0)' }
+                        },
+                        floatUp: {
+                            '0%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+                            '100%': { opacity: '0', transform: 'translateY(-60px) scale(1.2)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { opacity: 1 },
+                            '50%': { opacity: .5 },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #020617; color: #f8fafc; overflow-x: hidden; touch-action: manipulation; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+        
+        /* Particle & VFX Canvas */
+        #vfx-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Floating Text Layer */
+        #floating-text-layer {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 10000;
+        }
+        
+        .mx-float{position:absolute;font-weight:700;font-size:1.1rem;text-shadow:0 2px 4px rgba(0,0,0,.8);pointer-events:none;white-space:nowrap;will-change:transform,opacity;animation:mxFloat 1s ease-out forwards}
+        @keyframes mxFloat{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-110px) scale(1.2)}}
+        @keyframes mxShake{10%,90%{transform:translate3d(-2px,2px,0)}20%,80%{transform:translate3d(4px,-2px,0)}30%,50%,70%{transform:translate3d(-8px,4px,0)}40%,60%{transform:translate3d(8px,-4px,0)}}
+        .mx-shake{animation:mxShake .4s cubic-bezier(.36,.07,.19,.97) both}
+        @keyframes mxFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+        .mx-fade{animation:mxFade .3s}
+        .mx-sprite{width:192px;height:192px;filter:drop-shadow(0 4px 6px rgba(0,0,0,.6));background:var(--sprites) -384px 0/1152px 384px no-repeat}
+        .mx-sprite.play{animation:mxSwing .26s steps(6,jump-none) forwards}
+        @keyframes mxSwing{from{background-position:0 0}to{background-position:-960px 0}}
+        .mx-break{position:absolute;left:50%;top:50%;width:192px;height:192px;margin:-96px 0 0 -96px;transform:scale(1.2);opacity:0;background:var(--sprites) 0 -192px/1152px 384px no-repeat}
+        .mx-break.play{animation:mxBreak .3s steps(6,jump-none) .17s forwards}
+        @keyframes mxBreak{from{opacity:1;background-position:0 -192px}to{opacity:1;background-position:-960px -192px}}
+        .no-select { user-select: none; -webkit-user-select: none; }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    
+    <!-- VFX Overlay -->
+    <canvas id="vfx-canvas"></canvas>
+    <div id="floating-text-layer"></div>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const Icons = {
+            Pickaxe: ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.531 12.469 6.619 20.38a1 1 0 1 1-3-3l7.912-7.912"/><path d="M15.686 4.314A12.5 12.5 0 0 0 5.461 2.958 1 1 0 0 0 5.58 4.71a22 22 0 0 1 6.318 3.393"/><path d="M17.7 3.7a1 1 0 0 0-1.4 0l-4.6 4.6a1 1 0 0 0 0 1.4l2.6 2.6a1 1 0 0 0 1.4 0l4.6-4.6a1 1 0 0 0 0-1.4z"/><path d="M19.686 8.314a12.501 12.501 0 0 1 1.356 10.225 1 1 0 0 1-1.751-.119 22 22 0 0 0-3.393-6.319"/></svg>,
+            Ore: ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 3a9 9 0 1 0 9 9"/><path d="M19 3v4"/><path d="M21 5h-4"/><path d="m8.5 10.5 1 1"/><path d="m15.5 14.5 1 1"/><path d="m10.5 16.5 1 1"/></svg>,
+            Ingot: ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 14l6-6 10 3-6 6z"/><path d="M4 14v4l6 4v-4z"/><path d="M10 22l10-4v-4z"/></svg>,
+            Backpack: ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 10v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9"/><path d="M16 10V6a4 4 0 0 0-8 0v4"/><path d="M9 10v2"/><path d="M15 10v2"/><path d="M9 14h6"/></svg>,
+            Fire: ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>,
+            Flask: ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M10 2v7.31"/><path d="M14 9.3V2"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.52 16h12.96"/></svg>,
+            Store: ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/></svg>,
+            Trash: ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>,
+            DNA: ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 15c6.667-6 13.333 0 20-6"/><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993"/><path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993"/><path d="M17 18.5c1.4-1.2 2.6-2.5 3-4.5"/><path d="M7 5.5c-1.4 1.2-2.6 2.5-3 4.5"/></svg>,
+            Coin: ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="2" x2="12" y2="22"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        };
+
+        const SFX = {
+            initialized: false, starting: false,
+            ok: function(k, ms) { const n = performance.now(); if (n - (this['_' + k] || 0) < ms) return false; this['_' + k] = n; return true; },
+            init: async function() {
+                if (this.initialized || this.starting) return;
+                this.starting = true;
+                try {
+                    await Tone.start();
+                    if (Tone.context.state !== 'running') { this.starting = false; return; }
+                    this.hitSynth = new Tone.MembraneSynth({ pitchDecay: 0.05, octaves: 2, oscillator: { type: "square" } }).toDestination();
+                    this.hitSynth.volume.value = -8;
+                    this.chimeSynth = new Tone.PolySynth(Tone.Synth, {
+                        oscillator: { type: "triangle" },
+                        envelope: { attack: 0.01, decay: 0.1, sustain: 0.3, release: 1 }
+                    }).toDestination();
+                    this.chimeSynth.volume.value = -6;
+                    this.noise = new Tone.NoiseSynth({
+                        noise: { type: "pink" },
+                        envelope: { attack: 0.05, decay: 0.2, sustain: 0, release: 0.1 }
+                    }).toDestination();
+                    this.noise.volume.value = -10;
+                    this.clink = new Tone.MetalSynth({ frequency: 250, envelope: { attack: 0.001, decay: 0.08, release: 0.01 }, harmonicity: 5.1, modulationIndex: 16, resonance: 4000, octaves: 1.5 }).toDestination();
+                    this.clink.volume.value = -22;
+                    this.initialized = true;
+                } catch (e) { console.warn("Audio init failed", e); }
+                this.starting = false;
+            },
+            unlock: function() {
+                try { if (window.Tone && Tone.context.state !== 'running') Tone.context.resume(); } catch (e) {}
+                this.init();
+            },
+            playHit: function() { this.init(); this.hitSynth?.triggerAttackRelease(["C3","D3","E3","G3"][Math.random() * 4 | 0], "16n"); this.clink?.triggerAttackRelease(400 + Math.random() * 300, "32n"); },
+            playSwing: function() { this.init(); this.noise?.triggerAttackRelease("32n"); },
+            playClick: function() { this.init(); this.hitSynth?.triggerAttackRelease("C4", "32n"); },
+            playModifier: function(tier) { this.init(); const sets = [["E5","A5"],["G5","C6","E6"],["C5","E5","G5","C6"],["C6","E6","G6","B6"],["C5","G5","C6","E6","G6"],["C4","G4","C5","G5","C6","E6","G6"]]; this.chimeSynth?.triggerAttackRelease(sets[tier] || sets[0], "4n"); },
+            playRare: function() { this.init(); this.chimeSynth?.triggerAttackRelease(["E5", "G5", "C6"], "8n"); },
+            playEpic: function() { this.init(); this.chimeSynth?.triggerAttackRelease(["C5", "E5", "G5", "B5"], "4n"); },
+            playLegendary: function() { 
+                this.init(); 
+                this.hitSynth?.triggerAttackRelease("C2", "4n");
+                this.chimeSynth?.triggerAttackRelease(["G5", "C6", "E6", "G6"], "2n"); 
+            },
+            playSmelt: function() { this.init(); this.noise?.triggerAttackRelease("8n"); },
+            playMutateSuccess: function() { this.init(); this.chimeSynth?.triggerAttackRelease(["C5", "E5", "G5", "C6", "E6"], "2n"); },
+            playMutateFail: function() { this.init(); this.hitSynth?.triggerAttackRelease("G2", "4n"); },
+            playSell: function() { this.init(); ["G5","B5","D6","G6"].forEach((n, i) => this.chimeSynth?.triggerAttackRelease(n, "16n", Tone.now() + i * 0.07)); },
+            playUpgrade: function() { this.init(); this.chimeSynth?.triggerAttackRelease(["C4", "F4", "A4", "C5"], "4n"); }
+        };
+        Object.keys(SFX).filter(k => k.startsWith('play')).forEach(k => {
+            const f = SFX[k];
+            SFX[k] = function() { if (this.muted || !this.ok(k, 30)) return; try { f.apply(this, arguments); } catch (e) { console.warn('SFX', k, e); } };
+        });
+        ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'].forEach(ev => window.addEventListener(ev, () => SFX.unlock(), { passive: true }));
+
+        const RARITIES = {
+            COMMON:   { id: 'COMMON', rank: 1, text: 'text-rarity-common', bg: 'bg-gray-900/50', border: 'border-gray-600', shadow: '', hex: '#9ca3af', luckMod: 0, scale: 1 },
+            UNCOMMON: { id: 'UNCOMMON', rank: 2, text: 'text-rarity-uncommon', bg: 'bg-green-900/30', border: 'border-green-500/50', shadow: 'shadow-green-500/10', hex: '#4ade80', luckMod: 0.2, scale: 1.2 },
+            RARE:     { id: 'RARE', rank: 3, text: 'text-rarity-rare', bg: 'bg-blue-900/30', border: 'border-blue-500/50', shadow: 'shadow-blue-500/20', hex: '#60a5fa', luckMod: 0.5, scale: 1.5 },
+            EPIC:     { id: 'EPIC', rank: 4, text: 'text-rarity-epic', bg: 'bg-purple-900/30', border: 'border-purple-500/50', shadow: 'shadow-purple-500/30', hex: '#c084fc', luckMod: 1, scale: 2 },
+            LEGEND:   { id: 'LEGEND', rank: 5, text: 'text-rarity-legend', bg: 'bg-orange-900/30', border: 'border-orange-500/50', shadow: 'shadow-orange-500/40 drop-shadow-[0_0_5px_rgba(251,146,60,0.5)]', hex: '#fb923c', luckMod: 2.5, scale: 3 },
+            MYTHIC:   { id: 'MYTHIC', rank: 6, text: 'text-rarity-mythic', bg: 'bg-red-900/30', border: 'border-red-500/50', shadow: 'shadow-red-500/50 drop-shadow-[0_0_8px_rgba(248,113,113,0.8)]', hex: '#f87171', luckMod: 5, scale: 4 },
+            EXOTIC:   { id: 'EXOTIC', rank: 7, text: 'text-rarity-exotic', bg: 'bg-teal-900/30', border: 'border-teal-500/50', shadow: 'shadow-teal-500/60 drop-shadow-[0_0_12px_rgba(45,212,191,0.9)] animate-pulse', hex: '#2dd4bf', luckMod: 10, scale: 5 }
+        };
+
+        const CATEGORIES = {
+            ORE: 'ORE',
+            INGOT: 'INGOT',
+            MUTATED: 'MUTATED',
+            TRASH: 'TRASH'
+        };
+
+        class Item {
+            constructor(o) { Object.assign(this, o); }
+            get canMutate() { return this.type === CATEGORIES.ORE && this.rarity.rank >= 2; }
+            key(mod) { return mod ? `${this.id}@${mod.id}` : this.id; }
+            unitValue(mod, sellLv) { return this.val * (mod ? mod.mult : 1) * sellMult(sellLv); }
+        }
+        class Modifier {
+            constructor(o) { Object.assign(this, o); }
+            weightAt(lv) { return this.weight * (1 + lv * this.bias); }
+            label(name) { return `${this.name} ${name}`; }
+        }
+        // Ring around the mine button flashes in the rarity colour, then fades back to grey
+        const flashBorder = (el, hex, scale) => {
+            if (!el || scale <= 1) return;
+            el.style.transition = 'none';
+            el.style.borderColor = hex;
+            el.style.boxShadow = `0 0 ${20 + scale * 8}px ${hex}, inset 0 0 ${10 + scale * 4}px ${hex}66`;
+            void el.offsetWidth;
+            el.style.transition = `transform .15s, border-color ${0.4 + scale * 0.25}s ease-out, box-shadow ${0.4 + scale * 0.25}s ease-out`;
+            el.style.borderColor = '';
+            el.style.boxShadow = '';
+        };
+        const IMPACT_MS = 170; // frame of the swing sprite where the pickaxe hits
+        const GEM_CLIP = 'polygon(12% 0, 88% 0, 100% 12%, 100% 88%, 88% 100%, 12% 100%, 0 88%, 0 12%)';
+        const gemFrame = (hex, locked, open) => ({ clipPath: GEM_CLIP, padding: 2, background: open ? '#fff' : locked ? '#1e293b' : `linear-gradient(135deg, ${hex}, #0f172a 45%, ${hex})` });
+        const gemInner = (hex, locked) => ({ clipPath: GEM_CLIP, backgroundColor: '#020617', backgroundImage: locked ? 'none' : `linear-gradient(160deg, ${hex}40, transparent 65%)` });
+        const buildSprites = () => {
+            const F = 192, N = 6, c = document.createElement('canvas'); c.width = F * N; c.height = F * 2;
+            const g = c.getContext('2d'); g.lineCap = 'round'; g.lineJoin = 'round';
+            const angles = [-30, -22, -10, 6, 20, 28];   // frame 2 (-10deg) doubles as the idle pose
+            const line = (x1, y1, x2, y2, col, w) => { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); };
+            for (let i = 0; i < N; i++) {
+                g.save(); g.translate(i * F + F / 2, F * 0.70); g.rotate(angles[i] * Math.PI / 180); g.scale(0.78, 0.78);
+                line(0, 36, 0, -92, '#2b1a0c', 22);          // handle outline
+                line(0, 36, 0, -92, '#a16207', 15);          // handle wood
+                line(-4, 32, -4, -88, '#e0a94a', 4);         // wood highlight
+                const grad = g.createLinearGradient(0, -124, 0, -56);
+                grad.addColorStop(0, '#f8fafc'); grad.addColorStop(0.6, '#a9b6c9'); grad.addColorStop(1, '#6b7a90');
+                g.beginPath();                               // thick, symmetrical double-pointed head
+                g.moveTo(-72, -54); g.quadraticCurveTo(-42, -124, 0, -126); g.quadraticCurveTo(42, -124, 72, -54);
+                g.quadraticCurveTo(38, -84, 0, -84); g.quadraticCurveTo(-38, -84, -72, -54); g.closePath();
+                g.fillStyle = grad; g.fill(); g.strokeStyle = '#1e293b'; g.lineWidth = 6; g.stroke();
+                g.fillStyle = '#475569'; g.lineWidth = 5;    // collar
+                g.beginPath(); g.roundRect(-16, -98, 32, 18, 5); g.fill(); g.stroke();
+                g.restore();
+                // row 1: rock break (shards fly outwards and fade)
+                const t = i / (N - 1), cx = i * F + F / 2, cy = F + F / 2;
+                g.fillStyle = '#fff';
+                for (let k = 0; k < 8; k++) {
+                    const a = k * Math.PI / 4 + 0.3, d = 14 + t * 66, sz = Math.max(4, 24 - t * 18);
+                    g.globalAlpha = 1 - t * 0.85; g.beginPath();
+                    g.moveTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d);
+                    g.lineTo(cx + Math.cos(a + 0.6) * (d + sz), cy + Math.sin(a + 0.6) * (d + sz));
+                    g.lineTo(cx + Math.cos(a - 0.6) * (d + sz), cy + Math.sin(a - 0.6) * (d + sz)); g.fill();
+                }
+                g.globalAlpha = 1;
+            }
+            return c.toDataURL();
+        };
+
+        const DB_ITEMS = [
+            { id: 'dirt', name: 'Dirt', type: CATEGORIES.ORE, rarity: RARITIES.COMMON, weight: 50000, minKg: 1.0, maxKg: 50.0, val: 1, icon: Icons.Ore },
+            { id: 'stone', name: 'Stone', type: CATEGORIES.ORE, rarity: RARITIES.COMMON, weight: 40000, minKg: 1.0, maxKg: 100.0, val: 2, icon: Icons.Ore },
+            { id: 'coal', name: 'Coal', type: CATEGORIES.ORE, rarity: RARITIES.COMMON, weight: 25000, minKg: 0.5, maxKg: 25.0, val: 5, icon: Icons.Ore },
+            { id: 'copper_ore', name: 'Copper Ore', type: CATEGORIES.ORE, rarity: RARITIES.UNCOMMON, weight: 15000, minKg: 0.2, maxKg: 15.0, val: 15, icon: Icons.Ore },
+            { id: 'iron_ore', name: 'Iron Ore', type: CATEGORIES.ORE, rarity: RARITIES.UNCOMMON, weight: 10000, minKg: 0.2, maxKg: 10.0, val: 25, icon: Icons.Ore },
+            { id: 'gold_ore', name: 'Gold Ore', type: CATEGORIES.ORE, rarity: RARITIES.RARE, weight: 4000, minKg: 0.1, maxKg: 5.0, val: 80, icon: Icons.Ore },
+            { id: 'ruby', name: 'Ruby', type: CATEGORIES.ORE, rarity: RARITIES.EPIC, weight: 800, minKg: 0.05, maxKg: 2.0, val: 400, icon: Icons.Ore },
+            { id: 'diamond', name: 'Diamond', type: CATEGORIES.ORE, rarity: RARITIES.EPIC, weight: 400, minKg: 0.05, maxKg: 1.5, val: 1000, icon: Icons.Ore },
+            { id: 'titanium_ore', name: 'Titanium Ore', type: CATEGORIES.ORE, rarity: RARITIES.LEGEND, weight: 100, minKg: 0.01, maxKg: 50.0, val: 5000, icon: Icons.Ore },
+            { id: 'mithril_ore', name: 'Mithril Ore', type: CATEGORIES.ORE, rarity: RARITIES.MYTHIC, weight: 20, minKg: 0.01, maxKg: 200.0, val: 25000, icon: Icons.Ore },
+            { id: 'aetherium_ore', name: 'Aetherium Ore', type: CATEGORIES.ORE, rarity: RARITIES.EXOTIC, weight: 2, minKg: 0.01, maxKg: 1000.0, val: 200000, icon: Icons.Ore },
+
+            { id: 'copper_ingot', name: 'Copper Ingot', type: CATEGORIES.INGOT, rarity: RARITIES.UNCOMMON, val: 250, icon: Icons.Ingot, recipe: { cost: 10, oreId: 'copper_ore', coal: 2 } },
+            { id: 'iron_ingot', name: 'Iron Ingot', type: CATEGORIES.INGOT, rarity: RARITIES.RARE, val: 500, icon: Icons.Ingot, recipe: { cost: 10, oreId: 'iron_ore', coal: 4 } },
+            { id: 'gold_ingot', name: 'Gold Ingot', type: CATEGORIES.INGOT, rarity: RARITIES.EPIC, val: 2000, icon: Icons.Ingot, recipe: { cost: 10, oreId: 'gold_ore', coal: 10 } },
+            { id: 'titanium_ingot', name: 'Titanium Ingot', type: CATEGORIES.INGOT, rarity: RARITIES.MYTHIC, val: 150000, icon: Icons.Ingot, recipe: { cost: 10, oreId: 'titanium_ore', coal: 50 } },
+            { id: 'mithril_ingot', name: 'Mithril Ingot', type: CATEGORIES.INGOT, rarity: RARITIES.EXOTIC, val: 1000000, icon: Icons.Ingot, recipe: { cost: 5, oreId: 'mithril_ore', coal: 100 } },
+
+            { id: 'mutated_copper', name: 'Mutated Copper', type: CATEGORIES.MUTATED, rarity: RARITIES.RARE, val: 5000, icon: Icons.DNA, source: 'copper_ingot' },
+            { id: 'mutated_iron', name: 'Mutated Iron', type: CATEGORIES.MUTATED, rarity: RARITIES.EPIC, val: 10000, icon: Icons.DNA, source: 'iron_ingot' },
+            { id: 'mutated_gold', name: 'Mutated Gold', type: CATEGORIES.MUTATED, rarity: RARITIES.LEGEND, val: 40000, icon: Icons.DNA, source: 'gold_ingot' },
+            { id: 'mutated_titanium', name: 'Mutated Titanium', type: CATEGORIES.MUTATED, rarity: RARITIES.EXOTIC, val: 3000000, icon: Icons.DNA, source: 'titanium_ingot' },
+            { id: 'mutated_mithril', name: 'Cosmic Mithril', type: CATEGORIES.MUTATED, rarity: RARITIES.EXOTIC, val: 25000000, icon: Icons.DNA, source: 'mithril_ingot' },
+            
+            { id: 'ash', name: 'Ash', type: CATEGORIES.TRASH, rarity: RARITIES.COMMON, val: 0, icon: Icons.Trash }
+        ].map(o => new Item(o));
+
+        const ITEM_MAP = DB_ITEMS.reduce((acc, item) => { acc[item.id] = item; return acc; }, {});
+        const ORES = DB_ITEMS.filter(i => i.type === CATEGORIES.ORE);
+        const INGOTS = DB_ITEMS.filter(i => i.type === CATEGORIES.INGOT);
+
+        const MOD_LIST = [
+            { id: 'shiny', name: 'Shiny', mult: 1.5, weight: 50, bias: 0, hex: '#fde047', rarity: RARITIES.UNCOMMON },
+            { id: 'frozen', name: 'Frozen', mult: 2, weight: 30, bias: 0.1, hex: '#67e8f9', rarity: RARITIES.RARE },
+            { id: 'molten', name: 'Molten', mult: 3, weight: 15, bias: 0.2, hex: '#fb923c', rarity: RARITIES.EPIC },
+            { id: 'toxic', name: 'Toxic', mult: 5, weight: 6, bias: 0.3, hex: '#a3e635', rarity: RARITIES.LEGEND },
+            { id: 'celestial', name: 'Celestial', mult: 10, weight: 2, bias: 0.4, hex: '#e879f9', rarity: RARITIES.MYTHIC },
+            { id: 'void', name: 'Void', mult: 25, weight: 0.5, bias: 0.5, hex: '#818cf8', rarity: RARITIES.EXOTIC }
+        ].map(o => new Modifier(o));
+        const MOD_MAP = Object.fromEntries(MOD_LIST.map(m => [m.id, m]));
+        const sizeMult = lv => 1 + 0.25 * lv;
+        const sellMult = lv => 1 + 0.2 * lv;
+        const modChance = lv => Math.min(0.6, 0.03 + 0.02 * lv);
+        const costOf = (base, growth, lv) => Math.floor(base * Math.pow(growth, lv));
+        const fmtKg = a => a < 1 ? a : a.toLocaleString('id-ID');
+        const fmtMoney = n => Number(n.toFixed(1)).toLocaleString('id-ID');
+        // inventory key: "gold_ore" (plain) or "gold_ore@shiny" (modified)
+        const resolveKey = key => {
+            const at = key.indexOf('@');
+            return at < 0 ? { item: ITEM_MAP[key], mod: null } : { item: ITEM_MAP[key.slice(0, at)], mod: MOD_MAP[key.slice(at + 1)] };
+        };
+        Icons.Size = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>;
+        Icons.Sparkle = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/><path d="M19 17v4"/><path d="M17 19h4"/></svg>;
+
+        const UpgradeCard = ({ title, Icon, color, btn, level, desc, effect, cost, coins, onBuy }) => (
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+                <div>
+                    <div className="flex justify-between items-start mb-2">
+                        <h3 className={`font-bold flex items-center gap-2 ${color}`}><Icon className="w-5 h-5" /> {title}</h3>
+                        <span className="bg-slate-800 text-slate-300 text-xs px-2 py-1 rounded font-mono">Lv.{level}</span>
+                    </div>
+                    <p className="text-sm text-slate-400 mb-1">{desc}</p>
+                    <p className="text-xs text-slate-500 font-mono mb-4">{effect}</p>
+                </div>
+                <button onClick={onBuy} disabled={coins < cost}
+                    className={`w-full py-3 rounded-xl font-bold transition ${coins >= cost ? btn + ' text-white active:scale-95' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
+                    Upgrade (${cost.toLocaleString('id-ID')})
+                </button>
+            </div>
+        );
+
+        const DB_CONFIG = { name: 'MineXDB', version: 1, storeName: 'saveData' };
+        
+        let dbP = null;
+        const openDB = () => dbP || (dbP = new Promise((resolve, reject) => {
+            const req = indexedDB.open(DB_CONFIG.name, DB_CONFIG.version);
+            req.onupgradeneeded = e => {
+                if (!e.target.result.objectStoreNames.contains(DB_CONFIG.storeName)) {
+                    e.target.result.createObjectStore(DB_CONFIG.storeName);
+                }
+            };
+            req.onsuccess = e => resolve(e.target.result);
+            req.onerror = () => reject("DB Open Failed");
+        }));
+
+        const saveGame = async (state) => {
+            try { const db = await openDB(); db.transaction(DB_CONFIG.storeName, 'readwrite').objectStore(DB_CONFIG.storeName).put(state, 'gameState'); } catch (e) {}
+        };
+
+        const loadGame = async () => {
+            const db = await openDB();
+            return new Promise(resolve => {
+                const tx = db.transaction(DB_CONFIG.storeName, 'readonly');
+                const req = tx.objectStore(DB_CONFIG.storeName).get('gameState');
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => resolve(null);
+            });
+        };
+
+        class ParticleSystem {
+            constructor() { this.canvas = null; this.ctx = null; this.particles = []; this.raf = 0; this.onResize = () => this.resize(); }
+            init(c) { this.canvas = c; this.ctx = c.getContext('2d'); this.resize(); window.addEventListener('resize', this.onResize); }
+            resize() { if (this.canvas) { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; } }
+            spawnExplosion(x, y, rarity, hex) {
+                if (!this.ctx) return;
+                const count = Math.min(Math.floor(10 * rarity.scale), 40);
+                for (let i = 0; i < count && this.particles.length < 300; i++) {
+                    const a = Math.random() * Math.PI * 2, sp = (Math.random() * 8 + 4) * (rarity.scale * 0.5);
+                    this.particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, decay: Math.random() * 0.02 + 0.015, color: hex || rarity.hex, size: Math.random() * 4 + 2 + rarity.scale });
+                }
+                if (!this.raf) this.raf = requestAnimationFrame(() => this.loop());
+            }
+            loop() {
+                const ctx = this.ctx, ps = this.particles;
+                ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                ctx.lineCap = 'round';
+                for (let i = ps.length - 1; i >= 0; i--) {
+                    const p = ps[i];
+                    p.life -= p.decay;
+                    if (p.life <= 0) { ps[i] = ps[ps.length - 1]; ps.pop(); continue; }
+                    const px = p.x, py = p.y;
+                    p.x += p.vx; p.y += p.vy; p.vy += 0.2;
+                    ctx.beginPath(); ctx.moveTo(px - p.vx * 2, py - p.vy * 2); ctx.lineTo(p.x, p.y);
+                    ctx.strokeStyle = p.color; ctx.lineWidth = p.size * p.life; ctx.globalAlpha = p.life; ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+                if (ps.length) this.raf = requestAnimationFrame(() => this.loop());
+                else { this.raf = 0; ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); }
+            }
+            stop() { cancelAnimationFrame(this.raf); this.raf = 0; window.removeEventListener('resize', this.onResize); this.particles.length = 0; }
+        }
+        const vfx = new ParticleSystem();
+
+        const spawnFloatingText = (x, y, text, color) => {
+            const c = document.getElementById('floating-text-layer');
+            if (!c) return;
+            while (c.childElementCount >= 25) c.firstChild.remove();
+            const el = document.createElement('div');
+            el.className = 'mx-float'; el.textContent = text; el.style.color = color;
+            el.style.left = `${x + Math.random() * 40 - 20}px`; el.style.top = `${y - Math.random() * 20}px`;
+            el.addEventListener('animationend', () => el.remove(), { once: true });
+            c.appendChild(el);
+        };
+
+        const App = () => {
+            const [loaded, setLoaded] = React.useState(false);
+            const [inventory, setInventory] = React.useState({});
+            const [coins, setCoins] = React.useState(0);
+            const [pickaxeLevel, setPickaxeLevel] = React.useState(0);
+            const [autoLevel, setAutoLevel] = React.useState(0);
+            const [sizeLevel, setSizeLevel] = React.useState(0);
+            const [sellLevel, setSellLevel] = React.useState(0);
+            const [modLevel, setModLevel] = React.useState(0);
+            const [autoActive, setAutoActive] = React.useState(true);
+            const [stats, setStats] = React.useState({ mined: 0, smelted: 0, mutated: 0 });
+            
+            const [activeTab, setActiveTab] = React.useState('MINE');
+            const [logs, setLogs] = React.useState([]);
+            const [logFilter, setLogFilter] = React.useState('COMMON');
+            const [autoSell, setAutoSell] = React.useState(false);
+            const [openOre, setOpenOre] = React.useState(null);
+
+            const pickaxeCost = Math.floor(100 * Math.pow(2.2, pickaxeLevel));
+            const autoCost = Math.floor(500 * Math.pow(2.5, autoLevel));
+            const sizeCost = costOf(200, 2.1, sizeLevel);
+            const sellCost = costOf(300, 2.3, sellLevel);
+            const modCost = costOf(500, 2.5, modLevel);
+
+            React.useEffect(() => {
+                vfx.init(document.getElementById('vfx-canvas'));
+                document.documentElement.style.setProperty('--sprites', `url(${buildSprites()})`);
+
+                loadGame().then(saved => {
+                    if(saved) {
+                        setInventory(saved.inventory || {});
+                        setCoins(saved.coins || 0);
+                        setPickaxeLevel(saved.pickaxeLevel || 0);
+                        setAutoLevel(saved.autoLevel || 0);
+                        setSizeLevel(saved.sizeLevel || 0);
+                        setSellLevel(saved.sellLevel || 0);
+                        setModLevel(saved.modLevel || 0);
+                        if(saved.autoActive !== undefined) setAutoActive(saved.autoActive);
+                        if(saved.autoSell !== undefined) setAutoSell(saved.autoSell);
+                        if(saved.logFilter && RARITIES[saved.logFilter]) setLogFilter(saved.logFilter);
+                        setStats(saved.stats || { mined: 0, smelted: 0, mutated: 0 });
+                    }
+                    setLoaded(true);
+                });
+
+                return () => vfx.stop();
+            }, []);
+
+            const stateRef = React.useRef();
+            stateRef.current = { inventory, coins, pickaxeLevel, autoLevel, autoActive, stats, sizeLevel, sellLevel, modLevel, autoSell, logFilter };
+            React.useEffect(() => {
+                if (!loaded) return;
+                const flush = () => saveGame(stateRef.current);
+                const onVis = () => { if (document.hidden) flush(); };
+                const t = setInterval(flush, 5000);
+                document.addEventListener('visibilitychange', onVis);
+                window.addEventListener('pagehide', flush);
+                return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVis); window.removeEventListener('pagehide', flush); };
+            }, [loaded]);
+
+            const luckPool = React.useMemo(() => {
+                let t = 0; const cum = ORES.map(o => (t += Math.max(0.1, o.weight * (1 + pickaxeLevel * o.rarity.luckMod)), t));
+                return { cum, total: t };
+            }, [pickaxeLevel]);
+            const modPool = React.useMemo(() => {
+                let t = 0; const cum = MOD_LIST.map(m => (t += m.weightAt(modLevel), t));
+                return { cum, total: t };
+            }, [modLevel]);
+            const pick = pool => { const r = Math.random() * pool.total; return pool.cum.findIndex(c => r < c); };
+
+            const rootRef = React.useRef(null);
+            const shakeT = React.useRef(0);
+            const triggerScreenShake = (d = 400) => {
+                const el = rootRef.current; if (!el) return;
+                el.classList.remove('mx-shake'); void el.offsetWidth; el.classList.add('mx-shake');
+                clearTimeout(shakeT.current); shakeT.current = setTimeout(() => el.classList.remove('mx-shake'), d);
+            };
+
+            const spriteRef = React.useRef(null), breakRef = React.useRef(null);
+            const playSwing = (hex) => {
+                [spriteRef.current, breakRef.current].forEach(el => { if (!el) return; el.classList.remove('play'); void el.offsetWidth; el.classList.add('play'); });
+                if (breakRef.current) breakRef.current.style.filter = `drop-shadow(0 0 6px ${hex}) drop-shadow(0 0 2px ${hex})`;
+            };
+
+            const rollMine = () => {
+                const ore = ORES[pick(luckPool)];
+                const mod = ore.canMutate && Math.random() < modChance(modLevel) ? MOD_LIST[pick(modPool)] : null;
+                const amt = Number(((ore.minKg + Math.random() * (ore.maxKg - ore.minKg)) * sizeMult(sizeLevel)).toFixed(2));
+                const rarity = mod && mod.rarity.rank > ore.rarity.rank ? mod.rarity : ore.rarity;
+                return { ore, mod, amt, rarity, key: ore.key(mod) };
+            };
+            const modName = r => r.mod ? r.mod.label(r.ore.name) : r.ore.name;
+
+            const addLog = (msg, colorClass, IconComponent, rarity, hex) => {
+                setLogs(prev => {
+                    const n = [{ id: Date.now()+Math.random(), msg, colorClass, Icon: IconComponent, rarity, hex }, ...prev];
+                    return n.slice(0, 100);
+                });
+            };
+
+            // One state update per batch (click = 1 roll, drones = N rolls). Drops below the log filter are auto-sold if enabled.
+            const mineBatch = (n, e = null) => {
+                const gained = {}, all = [];
+                const minRank = autoSell ? RARITIES[logFilter].rank : 0;
+                let sold = 0, last;
+                for (let i = 0; i < n; i++) {
+                    const r = rollMine(); last = r;
+                    if (r.rarity.rank < minRank) { r.sold = true; sold += r.amt * r.ore.unitValue(r.mod, sellLevel); }
+                    else { gained[r.key] = (gained[r.key] || 0) + r.amt; all.push(r); }
+                }
+                if (all.length) setInventory(prev => { const next = { ...prev }; for (const k in gained) next[k] = Number(((prev[k] || 0) + gained[k]).toFixed(2)); return next; });
+                if (sold > 0) setCoins(prev => prev + sold);
+                setStats(prev => ({ ...prev, mined: prev.mined + n }));
+                const shown = all.sort((a, b) => a.rarity.rank - b.rarity.rank).slice(-5);
+                shown.forEach(r => addLog(`Found ${fmtKg(r.amt)} kg ${modName(r)}${r.rarity.rank >= 3 ? '!' : ''}`, r.mod ? '' : r.ore.rarity.text, r.ore.icon, r.rarity, r.mod?.hex));
+                if (e && last) {
+                    const r = last, sc = r.rarity.scale, hex = r.mod ? r.mod.hex : r.ore.rarity.hex;
+                    const x = e.clientX, y = e.clientY, btn = e.currentTarget;
+                    const text = r.sold ? `+$${fmtMoney(sold)} ${modName(r)}` : `+${fmtKg(r.amt)} kg ${modName(r)}`;
+                    playSwing(hex); SFX.playSwing();        // sprite swing + whoosh start now
+                    setTimeout(() => {                      // everything else lands on the impact frame
+                        spawnFloatingText(x, y, text, hex);
+                        if (sc >= 3) SFX.playLegendary(); else if (sc >= 2) SFX.playEpic(); else if (sc >= 1.5) SFX.playRare(); else SFX.playHit();
+                        flashBorder(btn, r.rarity.hex, sc);
+                        if (sc >= 3) triggerScreenShake();
+                        if (r.mod) SFX.playModifier(MOD_LIST.indexOf(r.mod));
+                    }, IMPACT_MS);
+                } else if (!e) {
+                    if (shown.some(r => r.rarity.rank >= 4)) SFX.playEpic(); else if (shown.some(r => r.rarity.rank >= 3)) SFX.playRare();
+                }
+            };
+
+            const mineRef = React.useRef(); mineRef.current = mineBatch;
+            const autoRef = React.useRef(0); autoRef.current = autoLevel;
+            const hasAuto = autoLevel > 0;
+            React.useEffect(() => {
+                if (!(hasAuto && autoActive && loaded)) return;
+                const t = setInterval(() => mineRef.current(autoRef.current), 1000);
+                return () => clearInterval(t);
+            }, [hasAuto, autoActive, loaded]); 
+
+            const handleSmelt = (ingotDef) => {
+                const { cost, oreId, coal } = ingotDef.recipe;
+                const currentOres = inventory[oreId] || 0;
+                const currentCoal = inventory['coal'] || 0;
+
+                if (currentOres >= cost && currentCoal >= coal) {
+                    setInventory(prev => ({
+                        ...prev,
+                        [oreId]: Number((prev[oreId] - cost).toFixed(3)),
+                        'coal': Number((prev['coal'] - coal).toFixed(3)),
+                        [ingotDef.id]: (prev[ingotDef.id] || 0) + 1
+                    }));
+                    setStats(prev => ({ ...prev, smelted: prev.smelted + 1 }));
+                    addLog(`Smelted ${ingotDef.name}`, ingotDef.rarity.text, ingotDef.icon, ingotDef.rarity);
+                    SFX.playSmelt();
+                }
+            };
+
+            const handleMutate = (ingotDef) => {
+                const currentAmount = inventory[ingotDef.id] || 0;
+                if(currentAmount > 0) {
+                    setInventory(prev => ({ ...prev, [ingotDef.id]: prev[ingotDef.id] - 1 }));
+                    
+                    const isSuccess = Math.random() <= 0.40;
+                    
+                    if(isSuccess) {
+                        const mutatedItem = DB_ITEMS.find(i => i.type === CATEGORIES.MUTATED && i.source === ingotDef.id);
+                        if(mutatedItem) {
+                            setInventory(prev => ({ ...prev, [mutatedItem.id]: (prev[mutatedItem.id] || 0) + 1 }));
+                            setStats(prev => ({ ...prev, mutated: prev.mutated + 1 }));
+                            addLog(`Mutation Success: ${mutatedItem.name}!`, mutatedItem.rarity.text, mutatedItem.icon, mutatedItem.rarity);
+                            triggerScreenShake(300);
+                            SFX.playMutateSuccess();
+                        }
+                    } else {
+                        setInventory(prev => ({ ...prev, 'ash': Number(((prev['ash'] || 0) + 1).toFixed(3)) }));
+                        addLog(`Mutation Failed: Got Ash`, 'text-gray-500', Icons.Trash, RARITIES.COMMON);
+                        SFX.playMutateFail();
+                    }
+                }
+            };
+
+            const handleSellAll = () => {
+                let totalValue = 0;
+                const newInv = { ...inventory };
+                
+                Object.keys(newInv).forEach(key => {
+                    if (newInv[key] > 0) {
+                        const { item, mod } = resolveKey(key);
+                        if (item && item.val > 0) { 
+                            totalValue += item.unitValue(mod, sellLevel) * newInv[key];
+                            newInv[key] = 0;
+                        }
+                    }
+                });
+
+                if (totalValue > 0) {
+                    setCoins(prev => prev + totalValue);
+                    setInventory(newInv);
+                    addLog(`Sold inventory for $${Math.floor(totalValue).toLocaleString('id-ID')}`, 'text-green-400', Icons.Coin, RARITIES.UNCOMMON);
+                    spawnFloatingText(window.innerWidth/2, window.innerHeight/2, `+ $${Math.floor(totalValue).toLocaleString('id-ID')}`, '#4ade80');
+                    SFX.playSell();
+                }
+            };
+
+            const buyUpgrade = (type) => {
+                const m = { pickaxe: [pickaxeCost, setPickaxeLevel], auto: [autoCost, setAutoLevel], size: [sizeCost, setSizeLevel], sell: [sellCost, setSellLevel], mod: [modCost, setModLevel] }[type];
+                if (!m || coins < m[0]) return;
+                setCoins(p => p - m[0]); m[1](p => p + 1); SFX.playUpgrade();
+            };
+
+            if (!loaded) return <div className="h-screen flex items-center justify-center text-2xl font-bold text-teal-400 animate-pulse">Loading Core Systems...</div>;
+
+            const tabs = [
+                { id: 'MINE', icon: Icons.Pickaxe, label: 'Mine' },
+                { id: 'INV', icon: Icons.Backpack, label: 'Inventory' },
+                { id: 'FORGE', icon: Icons.Fire, label: 'Forge' },
+                { id: 'LAB', icon: Icons.Flask, label: 'Lab' },
+                { id: 'SHOP', icon: Icons.Store, label: 'Shop' }
+            ];
+
+            const oreVariants = {};
+            Object.keys(inventory).forEach(k => {
+                if (!k.includes('@') || !(inventory[k] > 0)) return;
+                const { item, mod } = resolveKey(k);
+                if (!item || !mod) return;
+                (oreVariants[item.id] = oreVariants[item.id] || []).push({ k, mod, kg: inventory[k] });
+            });
+
+            const filterLevels = ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGEND', 'MYTHIC', 'EXOTIC'];
+            const currentFilterObj = RARITIES[logFilter] || RARITIES.COMMON;
+
+            const filteredLogs = logs.filter(log => {
+                if (!log.rarity) return true;
+                return log.rarity.rank >= currentFilterObj.rank;
+            });
+
+            return (
+                <div ref={rootRef} className="min-h-screen flex flex-col bg-slate-950 text-slate-200">
+                    {/* Header */}
+                    <header className="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-40 shadow-xl shadow-black/50">
+                        <div className="max-w-5xl mx-auto flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-teal-500/20 p-2 rounded-lg border border-teal-500/50">
+                                    <Icons.Pickaxe className="w-6 h-6 text-teal-400" />
+                                </div>
+                                <h1 className="text-xl sm:text-2xl font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-blue-500">MineX</h1>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1 bg-black/40 px-4 py-2 rounded-xl border border-slate-700/50 min-w-[100px] justify-center">
+                                    <span className="font-mono font-bold text-green-400 text-lg">$</span>
+                                    <span className="font-mono font-bold text-green-400 truncate">{Math.floor(coins).toLocaleString('id-ID')}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Navigation */}
+                    <nav className="max-w-5xl mx-auto w-full p-4 pb-0">
+                        <div className="flex bg-slate-900/80 p-1 rounded-xl border border-slate-800 overflow-x-auto custom-scrollbar">
+                            {tabs.map(tab => (
+                                <button key={tab.id} onClick={() => { SFX.playClick(); setActiveTab(tab.id); }} 
+                                    className={`flex-1 min-w-[80px] flex flex-col sm:flex-row items-center justify-center gap-2 py-3 px-2 rounded-lg transition-all duration-200 font-bold text-sm
+                                    ${activeTab === tab.id ? 'bg-slate-800 text-teal-400 shadow-md shadow-black/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}>
+                                    <tab.icon className="w-5 h-5" />
+                                    <span className="hidden sm:block">{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </nav>
+
+                    {/* Main Content Area */}
+                    <main className="flex-1 max-w-5xl mx-auto w-full p-4 relative z-10">
+                        
+                        {/* TAB: MINE */}
+                        {activeTab === 'MINE' && (
+                            <div className="flex flex-col md:flex-row gap-6 h-full">
+                                <div className="flex-1 bg-slate-900/50 rounded-2xl border border-slate-800 flex flex-col items-center justify-center p-8 relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-teal-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                                    
+                                    <div className="text-slate-400 mb-8 grid grid-cols-3 gap-4 text-sm w-full max-w-sm text-center">
+                                        <div><div className="font-mono text-green-400 text-lg">{stats.mined.toLocaleString('id-ID')}</div>Mined</div>
+                                        <div><div className="font-mono text-teal-400 text-lg">Lv.{pickaxeLevel}</div>Luck</div>
+                                        <div><div className="font-mono text-blue-400 text-lg">{autoLevel}</div>Auto</div>
+                                        <div><div className="font-mono text-orange-400 text-lg">x{sizeMult(sizeLevel).toFixed(2)}</div>Size</div>
+                                        <div><div className="font-mono text-yellow-400 text-lg">x{sellMult(sellLevel).toFixed(2)}</div>Sell</div>
+                                        <div><div className="font-mono text-fuchsia-400 text-lg">{Math.round(modChance(modLevel) * 100)}%</div>Modifier</div>
+                                    </div>
+
+                                    <button
+                                        onPointerDown={(e) => mineBatch(1, e)}
+                                        style={{ touchAction: 'none' }}
+                                        className="relative w-56 h-56 rounded-full bg-slate-950 border-8 border-slate-800 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex items-center justify-center transition-transform active:scale-95 active:border-slate-700 hover:border-slate-700 hover:shadow-[0_0_40px_rgba(45,212,191,0.2)] focus:outline-none"
+                                    >
+                                        <div ref={spriteRef} className="mx-sprite pointer-events-none" onAnimationEnd={(e) => e.currentTarget.classList.remove('play')} />
+                                        <div ref={breakRef} className="mx-break pointer-events-none" onAnimationEnd={(e) => e.currentTarget.classList.remove('play')} />
+                                    </button>
+                                </div>
+
+                                <div className="md:w-80 bg-slate-900/50 rounded-2xl border border-slate-800 p-4 flex flex-col h-64 md:h-auto">
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-bold text-slate-300 uppercase tracking-wider text-sm">Activity Log</h3>
+                                <button 
+                                    onClick={() => {
+                                        const currentIndex = filterLevels.indexOf(logFilter);
+                                        const nextIndex = (currentIndex + 1) % filterLevels.length;
+                                        setLogFilter(filterLevels[nextIndex]);
+                                    }}
+                                    className="text-xs bg-slate-800 hover:bg-slate-700 text-teal-400 font-mono px-2.5 py-1 rounded-lg border border-slate-700/50 transition flex items-center gap-1 cursor-pointer"
+                                    title="Click to change rarity filter"
+                                >
+                                    <span className="font-bold">{logFilter === 'EXOTIC' ? 'EXOTIC' : `${logFilter}+`}</span>
+                                </button>
+                            </div>
+                            <button onClick={() => setAutoSell(v => !v)} title="Automatically sell drops below the filter rarity"
+                                className={`mb-2 text-xs font-bold px-2.5 py-1.5 rounded-lg border transition text-left ${autoSell ? 'bg-green-600/20 text-green-400 border-green-600/50' : 'bg-slate-800 text-slate-400 border-slate-700/50'}`}>
+                                Auto Sell: {autoSell ? 'ON' : 'OFF'}{autoSell ? (logFilter === 'COMMON' ? ' (nothing below Common)' : ` (below ${logFilter})`) : ''}
+                            </button>
+                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                                        {filteredLogs.length === 0 ? <div className="text-slate-600 text-sm text-center mt-10 italic">No matching logs...</div> : filteredLogs.slice(0, 40).map(log => (
+                                            <div key={log.id} className="flex items-center gap-3 p-2 bg-slate-950 rounded-lg border border-slate-800/50 mx-fade" style={log.hex ? { color: log.hex } : undefined}>
+                                                {log.Icon && <log.Icon className={`w-4 h-4 ${log.colorClass}`} />}
+                                                <span className={`text-sm font-semibold truncate ${log.colorClass}`}>{log.msg}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: INVENTORY */}
+                        {activeTab === 'INV' && (
+                            <div className="bg-slate-900/50 rounded-2xl border border-slate-800 p-4 sm:p-6 min-h-[60vh]">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-xl font-bold">Storage</h2>
+                                    <button onClick={handleSellAll} className="bg-green-600/20 hover:bg-green-600/40 text-green-400 border border-green-600/50 px-4 py-2 rounded-lg font-bold transition flex items-center gap-2 text-sm">
+                                        <Icons.Coin className="w-4 h-4" /> Sell All
+                                    </button>
+                                </div>
+                                
+                                {['ORE', 'INGOT', 'MUTATED', 'TRASH'].map(cat => {
+                                    const itemsInCat = DB_ITEMS.filter(i => i.type === cat && (inventory[i.id] > 0 || cat === 'ORE'));
+                                    if(itemsInCat.every(i => !(inventory[i.id] > 0)) && cat !== 'ORE') return null;
+
+                                    return (
+                                        <div key={cat} className="mb-8">
+                                            <h3 className="text-sm font-bold text-slate-500 mb-3 uppercase tracking-widest">{cat}S</h3>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3" style={{ gridAutoFlow: 'dense' }}>
+                                                {itemsInCat.map(item => {
+                                                    const vars = oreVariants[item.id] || [];
+                                                    const count = Number(((inventory[item.id] || 0) + vars.reduce((t, v) => t + v.kg, 0)).toFixed(2));
+                                                    const isLocked = count === 0;
+                                                    const formattedCount = count % 1 === 0 ? count : count.toFixed(2);
+                                                    return (<React.Fragment key={item.id}><div className="mx-gem" style={gemFrame(item.rarity.hex, isLocked, openOre === item.id)}><div style={gemInner(item.rarity.hex, isLocked)} onClick={cat === 'ORE' && !isLocked ? () => setOpenOre(o => o === item.id ? null : item.id) : undefined} className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center text-center transition-all !border-0 !rounded-none ${cat === 'ORE' && !isLocked ? 'cursor-pointer hover:scale-[1.03]' : ''} ${openOre === item.id ? 'ring-2 ring-white/70' : ''} ${isLocked ? 'bg-slate-950 border-slate-800 opacity-40 grayscale' : `${item.rarity.bg} ${item.rarity.border} ${item.rarity.shadow}`}`}>
+                                                            <div className="text-xs font-mono font-bold w-full text-right mb-1 text-slate-400">{isLocked ? '0 kg' : `${formattedCount} kg`}</div>
+                                                            <item.icon className={`w-8 h-8 mb-2 ${isLocked ? 'text-slate-600' : item.rarity.text}`} />
+                                                            <div className={`text-xs font-bold truncate w-full ${isLocked ? 'text-slate-500' : item.rarity.text}`}>{isLocked ? '???' : item.name}</div>
+                                                            <div className={`text-[0.5rem] uppercase tracking-wider font-bold mt-1 ${isLocked ? 'text-slate-600' : item.rarity.text}`}>{item.rarity.id}</div>
+                                                            <div className="text-[0.6rem] text-green-400/80 font-mono mt-1">${fmtMoney(item.val * sellMult(sellLevel))} / kg</div>{vars.length > 0 && <div className="text-[0.6rem] font-bold text-fuchsia-400 mt-1">✦ {vars.length} mutation{vars.length > 1 ? 's' : ''}</div>}</div></div>
+                                                        {cat === 'ORE' && openOre === item.id && (
+                                                            <div className="col-span-full rounded-xl border border-slate-700 bg-slate-950 p-4">
+                                                                <div className="flex justify-between items-center mb-3">
+                                                                    <div className={`font-bold ${item.rarity.text}`}>{item.name} Storage</div>
+                                                                    <button onClick={() => setOpenOre(null)} className="text-slate-400 hover:text-white text-sm">✕ Close</button>
+                                                                </div>
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                    {[{ k: item.id, mod: null, kg: inventory[item.id] || 0 }, ...(item.rarity.rank >= 2 ? MOD_LIST.map(m => ({ k: `${item.id}@${m.id}`, mod: m, kg: inventory[`${item.id}@${m.id}`] || 0 })) : [])].map(v => (
+                                                                        <div key={v.k} className={`flex items-center justify-between p-2 rounded-lg border bg-slate-900/60 text-sm ${v.kg > 0 ? '' : 'opacity-40'}`}
+                                                                            style={{ borderColor: v.mod ? v.mod.hex : '#475569', color: v.mod ? v.mod.hex : '#cbd5e1' }}>
+                                                                            <div>
+                                                                                <div className="font-bold">{v.kg > 0 || !v.mod ? `${v.mod ? v.mod.name : 'Normal'} ${item.name}` : '???'}</div>
+                                                                                <div className="text-[0.65rem] opacity-80">{v.mod ? `x${v.mod.mult} value` : 'No mutation'}</div>
+                                                                            </div>
+                                                                            <div className="text-right font-mono text-xs">
+                                                                                <div>{v.kg.toFixed(2)} kg</div>
+                                                                                <div className="text-green-400">${fmtMoney(v.kg * item.val * (v.mod ? v.mod.mult : 1) * sellMult(sellLevel))}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </React.Fragment>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+
+                        {/* TAB: FORGE */}
+                        {activeTab === 'FORGE' && (
+                            <div className="bg-slate-900/50 rounded-2xl border border-slate-800 p-4 sm:p-6 min-h-[60vh]">
+                                <h2 className="text-xl font-bold mb-2 flex items-center gap-2"><Icons.Fire className="w-6 h-6 text-orange-500" /> Forge</h2>
+                                <p className="text-sm text-slate-400 mb-6">Smelt raw ores with Coal to create valuable Ingots. Only unmodified ore can be smelted - sell modified ore instead.</p>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {INGOTS.map(ingot => {
+                                        const { cost, oreId, coal } = ingot.recipe;
+                                        const oreDef = ITEM_MAP[oreId];
+                                        const curOre = inventory[oreId] || 0;
+                                        const curCoal = inventory['coal'] || 0;
+                                        const canSmelt = curOre >= cost && curCoal >= coal;
+
+                                        return (
+                                            <div key={ingot.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center gap-4">
+                                                <div className={`w-16 h-16 rounded-lg flex items-center justify-center border ${ingot.rarity.border} ${ingot.rarity.bg}`}>
+                                                    <ingot.icon className={`w-10 h-10 ${ingot.rarity.text}`} />
+                                                </div>
+                                                <div className="flex-1 text-center sm:text-left">
+                                                    <h3 className={`font-bold ${ingot.rarity.text}`}>{ingot.name}</h3>
+                                                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2 text-xs font-mono">
+                                                        <span className={curOre >= cost ? 'text-green-400' : 'text-red-400'}>{curOre >= cost ? curOre : curOre.toFixed(2)}/{cost} kg {oreDef.name}</span>
+                                                        <span className="text-slate-600">+</span>
+                                                        <span className={curCoal >= coal ? 'text-green-400' : 'text-red-400'}>{curCoal}/{coal} kg Coal</span>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => handleSmelt(ingot)} disabled={!canSmelt} 
+                                                    className={`px-6 py-3 rounded-xl font-bold transition-all w-full sm:w-auto
+                                                    ${canSmelt ? 'bg-orange-600 hover:bg-orange-500 text-white shadow-[0_0_15px_rgba(234,88,12,0.3)]' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
+                                                    Smelt
+                                                </button>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: LAB */}
+                        {activeTab === 'LAB' && (
+                            <div className="bg-slate-900/50 rounded-2xl border border-slate-800 p-4 sm:p-6 min-h-[60vh]">
+                                <h2 className="text-xl font-bold mb-2 flex items-center gap-2"><Icons.Flask className="w-6 h-6 text-green-400" /> Mutation Lab</h2>
+                                <p className="text-sm text-slate-400 mb-6">Expose Ingots to radiation. <span className="text-green-400 font-bold">40% Success</span> for insane value. <span className="text-gray-500 font-bold">60% Ash</span>.</p>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {DB_ITEMS.filter(i => i.type === CATEGORIES.MUTATED).map(mutated => {
+                                        const ingotDef = ITEM_MAP[mutated.source];
+                                        const curIngot = inventory[ingotDef.id] || 0;
+                                        const canMutate = curIngot > 0;
+
+                                        return (
+                                            <div key={mutated.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center gap-4 relative overflow-hidden group">
+                                                <div className={`absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none ${canMutate ? 'animate-pulse' : ''}`}></div>
+                                                
+                                                <div className={`w-16 h-16 rounded-lg flex items-center justify-center border ${mutated.rarity.border} ${mutated.rarity.bg}`}>
+                                                    <mutated.icon className={`w-10 h-10 ${mutated.rarity.text}`} />
+                                                </div>
+                                                <div className="flex-1 text-center sm:text-left z-10">
+                                                    <h3 className={`font-bold ${mutated.rarity.text}`}>{mutated.name}</h3>
+                                                    <div className="text-xs text-green-400 font-mono mt-1">Value: ${fmtMoney(mutated.val * sellMult(sellLevel))}</div>
+                                                    <div className="mt-2 text-xs text-slate-400">
+                                                        Req: 1 <span className={curIngot > 0 ? ingotDef.rarity.text : 'text-red-400'}>{ingotDef.name}</span> ({curIngot} owned)
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => handleMutate(ingotDef)} disabled={!canMutate} 
+                                                    className={`px-6 py-3 rounded-xl font-bold transition-all w-full sm:w-auto z-10
+                                                    ${canMutate ? 'bg-green-600 hover:bg-green-500 text-white shadow-[0_0_15px_rgba(22,163,74,0.3)]' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
+                                                    Mutate
+                                                </button>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: SHOP */}
+                        {activeTab === 'SHOP' && (
+                            <div className="bg-slate-900/50 rounded-2xl border border-slate-800 p-4 sm:p-6 min-h-[60vh]">
+                                <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Icons.Store className="w-6 h-6 text-purple-400" /> Upgrades</h2>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <UpgradeCard title="Luck Enchant" Icon={Icons.Pickaxe} color="text-teal-400" btn="bg-teal-600 hover:bg-teal-500" level={pickaxeLevel} coins={coins} cost={pickaxeCost} onBuy={() => buyUpgrade('pickaxe')}
+                                        desc="Increases the probability of finding rarer ores." effect="Higher levels favor rarer ores" />
+                                    <UpgradeCard title="Size Boost" Icon={Icons.Size} color="text-orange-400" btn="bg-orange-600 hover:bg-orange-500" level={sizeLevel} coins={coins} cost={sizeCost} onBuy={() => buyUpgrade('size')}
+                                        desc="Every ore you mine weighs more (more kg per hit)." effect={`Ore weight x${sizeMult(sizeLevel).toFixed(2)} -> x${sizeMult(sizeLevel + 1).toFixed(2)}`} />
+                                    <UpgradeCard title="Sell Boost" Icon={Icons.Coin} color="text-yellow-400" btn="bg-yellow-600 hover:bg-yellow-500" level={sellLevel} coins={coins} cost={sellCost} onBuy={() => buyUpgrade('sell')}
+                                        desc="Increases the coins you get when selling." effect={`Sell value x${sellMult(sellLevel).toFixed(2)} -> x${sellMult(sellLevel + 1).toFixed(2)}`} />
+                                    <UpgradeCard title="Modifier Boost" Icon={Icons.Sparkle} color="text-fuchsia-400" btn="bg-fuchsia-600 hover:bg-fuchsia-500" level={modLevel} coins={coins} cost={modCost} onBuy={() => buyUpgrade('mod')}
+                                        desc="Ores can roll a mutation (Shiny, Frozen, Molten, Toxic, Celestial, Void) that multiplies their value. Higher levels also favor rarer mutations."
+                                        effect={`Mutation chance ${Math.round(modChance(modLevel) * 100)}% -> ${Math.round(modChance(modLevel + 1) * 100)}%`} />
+                                    <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h3 className="font-bold text-blue-400 flex items-center gap-2">
+                                                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
+                                                    Auto-Miner Drones
+                                                </h3>
+                                                <div className="flex items-center gap-2">
+                                                    {autoLevel > 0 && (
+                                                        <button onClick={() => setAutoActive(!autoActive)} className={`text-xs px-2 py-0.5 rounded font-bold transition ${autoActive ? 'bg-green-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                                                            {autoActive ? 'ON' : 'OFF'}
+                                                        </button>
+                                                    )}
+                                                    <span className="bg-slate-800 text-slate-300 text-xs px-2 py-1 rounded font-mono">{autoLevel} hit/s</span>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm text-slate-400 mb-4">Automatically mines resources every second in the background.</p>
+                                        </div>
+                                        <button onClick={() => buyUpgrade('auto')} disabled={coins < autoCost}
+                                            className={`w-full py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition
+                                            ${coins >= autoCost ? 'bg-blue-600 hover:bg-blue-500 text-white active:scale-95' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
+                                            Buy Drone (${autoCost.toLocaleString('id-ID')})
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
